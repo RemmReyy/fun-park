@@ -42,13 +42,16 @@
 {% if role == 'manager' %}
 <div class="mt-6">
     <h2 class="text-xl font-bold mb-4">Фінансовий звіт</h2>
-    <select id="report-period" class="p-2 border rounded">
-        <option value="all">За весь час</option>
-        <option value="day">Денний</option>
-        <option value="week">Тижневий</option>
-        <option value="month">Місячний</option>
-    </select>
-    <button onclick="fetchReport()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Сформувати звіт</button>
+    <div class="flex items-center mb-4">
+        <select id="report-period" class="p-2 border rounded mr-2">
+            <option value="all">За весь час</option>
+            <option value="day">Денний</option>
+            <option value="week">Тижневий</option>
+            <option value="month">Місячний</option>
+        </select>
+        <button onclick="fetchReport()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mr-2">Сформувати звіт</button>
+        <button onclick="downloadPDF()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Експортувати в PDF</button>
+    </div>
     <div id="report" class="mt-4"></div>
 </div>
 {% endif %}
@@ -89,6 +92,12 @@
                 ${ticketTypesHtml}
             `;
         }
+    }
+
+    // Завантаження PDF
+    function downloadPDF() {
+        const period = document.getElementById('report-period').value;
+        window.location.href = `/api/report/pdf?period=${period}`;
     }
 
     // Обробка оновлення атракціонів через AJAX

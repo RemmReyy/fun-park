@@ -1,10 +1,15 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_file
 from models import db, User, Ticket, Attraction, MaintenanceRecord, Transaction, TicketPrice
 from datetime import datetime, timedelta
 import qrcode
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet
+from io import BytesIO
 
 # Завантажуємо змінні оточення з .env
 load_dotenv()
@@ -216,3 +221,72 @@ def financial_report():
         'transaction_count': len([t for t in transactions if t.status == 'completed']),
         'ticket_types': ticket_types
     })
+
+@app.route('/api/report/pdf', methods=['GET'])
+def financial_report_pdf():
+    if session.get('role') != 'manager':
+        return jsonify({'error': 'Несанкціонований доступ'}), 403
+
+    period = request.args.get('period', 'all')  # day, week, month, all
+    transactions = Transaction.query
+
+    if period == 'day':
+        start_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        transactions = transactions.filter(Transaction.timestamp >= start_date)
+    elif period == 'week':
+        start_date = datetime.utcnow() - timedelta(days=datetime.utcnow().weekday())
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        transactions = transactions.all()
+        transactions = [t for t in transactions if t.timestamp >= start_date]
+    elif period == 'month':
+        start_date = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        transactions = transactions.filter(Transaction.timestamp >= start_date)
+
+    transactions = transactions.all()
+    total_revenue = sum(t.amount for t in transactions if t.status == 'completed')
+    ticket_types = {}
+    for t in transactions:
+        ticket = Ticket.query.filter_by(id=t.id).first()
+        if ticket and t.status == 'completed':
+            ticket_types[ticket.type] = ticket_types.get(ticket.type, 0) + 1
+
+    # Generate PDF
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    # Title
+    period_name = {'all': 'All Time', 'day': 'Daily', 'week': 'Weekly', 'month': 'Monthly'}[period]
+    elements.append(Paragraph(f"Financial Report: {period_name}", styles['Title']))
+    elements.append(Spacer(1, 12))
+
+    # Summary
+    elements.append(Paragraph(f"Date Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+    elements.append(Paragraph(f"Total Revenue: ${total_revenue:.2f}", styles['Normal']))
+    elements.append(Paragraph(f"Number of Transactions: {len([t for t in transactions if t.status == 'completed'])}", styles['Normal']))
+    elements.append(Spacer(1, 12))
+
+    # Ticket Types Table
+    elements.append(Paragraph("Breakdown by Ticket Types:", styles['Heading2']))
+    data = [['Ticket Type', 'Count']]
+    for ticket_type, count in ticket_types.items():
+        data.append([ticket_type.capitalize(), str(count)])
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 14),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    elements.append(table)
+
+    # Build PDF
+    doc.build(elements)
+    buffer.seek(0)
+
+    return send_file(buffer, as_attachment=True, download_name=f"financial_report_{period}_{datetime.utcnow().strftime('%Y%m%d')}.pdf", mimetype='application/pdf')
