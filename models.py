@@ -31,11 +31,12 @@ class MaintenanceRecord(db.Model):
 
 class Transaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'), nullable=True)  # Link to Ticket
     amount = db.Column(db.Float, nullable=False)
-    payment_method = db.Column(db.String(20), nullable=False)
-    status = db.Column(db.String(20), nullable=False)  # completed, pending, failed
+    payment_method = db.Column(db.String(20), nullable=False)  # card, cash
+    status = db.Column(db.String(20), nullable=False)  # pending, completed, failed
     transaction_type = db.Column(db.String(20), nullable=False, default='purchase')  # purchase, refund, exchange
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
 class TicketPrice(db.Model):
     id = db.Column(db.Integer, primary_key=True)

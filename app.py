@@ -81,8 +81,15 @@ def ticket_purchase():
             qr_code = f"qr_{int(datetime.now().timestamp())}_{hash(ticket_type)}"
             ticket = Ticket(type=ticket_type, price=price, qr_code=qr_code, status='active')
             db.session.add(ticket)
+            db.session.commit()  # Commit to get ticket.id
 
-            transaction = Transaction(amount=price, payment_method='card', status='completed', transaction_type='purchase')
+            transaction = Transaction(
+                ticket_id=ticket.id,  # Link transaction to ticket
+                amount=price,
+                payment_method='card',
+                status='completed',
+                transaction_type='purchase'
+            )
             db.session.add(transaction)
             db.session.commit()
 
@@ -126,7 +133,7 @@ def refund_exchange():
             return redirect(url_for('refund_exchange'))
 
         # Find the associated purchase transaction
-        purchase_transaction = Transaction.query.filter_by(id=ticket.id, transaction_type='purchase', status='completed').first()
+        purchase_transaction = Transaction.query.filter_by(ticket_id=ticket.id, transaction_type='purchase', status='completed').first()
         if not purchase_transaction:
             flash('Транзакція покупки не знайдена')
             return redirect(url_for('refund_exchange'))
@@ -138,6 +145,7 @@ def refund_exchange():
 
                 # Create a refund transaction
                 refund_transaction = Transaction(
+                    ticket_id=ticket.id,  # Link refund to ticket
                     amount=-purchase_transaction.amount,  # Negative amount for refund
                     payment_method=purchase_transaction.payment_method,
                     status='completed',
@@ -166,10 +174,12 @@ def refund_exchange():
                 new_qr_code = f"qr_{int(datetime.now().timestamp())}_{hash(new_ticket_type)}"
                 new_ticket = Ticket(type=new_ticket_type, price=new_price, qr_code=new_qr_code, status='active')
                 db.session.add(new_ticket)
+                db.session.commit()  # Commit to get new_ticket.id
 
                 # Calculate price difference and create an exchange transaction
                 price_difference = new_price - ticket.price
                 exchange_transaction = Transaction(
+                    ticket_id=new_ticket.id,  # Link exchange to new ticket
                     amount=price_difference,  # Positive if upgrade, negative if downgrade
                     payment_method=purchase_transaction.payment_method,
                     status='completed',
@@ -303,14 +313,25 @@ def financial_report():
     transactions = transactions.all()
     total_revenue = sum(t.amount for t in transactions if t.status == 'completed')
     ticket_types = {}
+    refund_types = {}
+
     for t in transactions:
-        ticket = Ticket.query.filter_by(id=t.id).first()
-        if ticket and t.status == 'completed':
-            ticket_types[ticket.type] = ticket_types.get(ticket.type, 0) + 1
+        if t.ticket_id:  # Ensure ticket_id exists
+            ticket = Ticket.query.get(t.ticket_id)
+            if ticket and t.status == 'completed':
+                if t.transaction_type == 'purchase':
+                    ticket_types[ticket.type] = ticket_types.get(ticket.type, 0) + 1
+                elif t.transaction_type == 'refund':
+                    refund_types[ticket.type] = refund_types.get(ticket.type, 0) + 1
+
+    # Count total refunds
+    refund_count = len([t for t in transactions if t.status == 'completed' and t.transaction_type == 'refund'])
 
     return jsonify({
         'total_revenue': total_revenue,
-        'transaction_count': len([t for t in transactions if t.status == 'completed']),
+        'transaction_count': len([t for t in transactions if t.status == 'completed' and t.transaction_type == 'purchase']),
+        'refund_count': refund_count,
+        'refund_types': refund_types,
         'ticket_types': ticket_types
     })
 
@@ -337,10 +358,19 @@ def financial_report_pdf():
     transactions = transactions.all()
     total_revenue = sum(t.amount for t in transactions if t.status == 'completed')
     ticket_types = {}
+    refund_types = {}
+
     for t in transactions:
-        ticket = Ticket.query.filter_by(id=t.id).first()
-        if ticket and t.status == 'completed':
-            ticket_types[ticket.type] = ticket_types.get(ticket.type, 0) + 1
+        if t.ticket_id:  # Ensure ticket_id exists
+            ticket = Ticket.query.get(t.ticket_id)
+            if ticket and t.status == 'completed':
+                if t.transaction_type == 'purchase':
+                    ticket_types[ticket.type] = ticket_types.get(ticket.type, 0) + 1
+                elif t.transaction_type == 'refund':
+                    refund_types[ticket.type] = refund_types.get(ticket.type, 0) + 1
+
+    # Count total refunds
+    refund_count = len([t for t in transactions if t.status == 'completed' and t.transaction_type == 'refund'])
 
     # Generate PDF
     buffer = BytesIO()
@@ -356,7 +386,29 @@ def financial_report_pdf():
     # Summary
     elements.append(Paragraph(f"Date Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
     elements.append(Paragraph(f"Total Revenue: ${total_revenue:.2f}", styles['Normal']))
-    elements.append(Paragraph(f"Number of Transactions: {len([t for t in transactions if t.status == 'completed'])}", styles['Normal']))
+    elements.append(Paragraph(f"Number of Transactions: {len([t for t in transactions if t.status == 'completed' and t.transaction_type == 'purchase'])}", styles['Normal']))
+    elements.append(Paragraph(f"Number of Refunds: {refund_count}", styles['Normal']))
+
+    # Refund Types
+    if refund_types:
+        elements.append(Paragraph("Refunds by Ticket Type:", styles['Heading2']))
+        refund_data = [['Ticket Type', 'Count']]
+        for ticket_type, count in refund_types.items():
+            refund_data.append([ticket_type.capitalize(), str(count)])
+        refund_table = Table(refund_data)
+        refund_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 14),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        elements.append(refund_table)
+    else:
+        elements.append(Paragraph("Refunds by Ticket Type: None", styles['Normal']))
     elements.append(Spacer(1, 12))
 
     # Ticket Types Table

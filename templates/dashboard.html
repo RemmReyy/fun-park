@@ -86,9 +86,23 @@
                 ticketTypesHtml += `<li>${type.charAt(0).toUpperCase() + type.slice(1)}: ${count}</li>`;
             }
             ticketTypesHtml += '</ul>';
+
+            let refundTypesHtml = '<ul>';
+            if (Object.keys(data.refund_types).length > 0) {
+                for (const [type, count] of Object.entries(data.refund_types)) {
+                    refundTypesHtml += `<li>${type.charAt(0).toUpperCase() + type.slice(1)}: ${count}</li>`;
+                }
+            } else {
+                refundTypesHtml += '<li>Немає</li>';
+            }
+            refundTypesHtml += '</ul>';
+
             document.getElementById('report').innerHTML = `
                 <p>Загальний дохід: $${data.total_revenue}</p>
                 <p>Кількість транзакцій: ${data.transaction_count}</p>
+                <p>Кількість повернень: ${data.refund_count}</p>
+                <p>Повернення за типами квитків:</p>
+                ${refundTypesHtml}
                 <p>Розподіл за типами квитків:</p>
                 ${ticketTypesHtml}
             `;
