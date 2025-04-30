@@ -6,7 +6,7 @@ import os
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key-for-dev')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///funpark.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
@@ -52,25 +52,38 @@ def dashboard():
 
 @app.route('/ticket/purchase', methods=['GET', 'POST'])
 def ticket_purchase():
+    if 'user_id' not in session or session.get('role') != 'cashier':
+        flash('Unauthorized access')
+        return redirect(url_for('login'))
+
     if request.method == 'POST':
-        ticket_type = request.form['ticket_type']
-        price = {'single': 10, 'daily': 30, 'group': 50}[ticket_type]
-        ticket = Ticket(type=ticket_type, price=price, qr_code='qr_' + str(datetime.now().timestamp()))
-        db.session.add(ticket)
+        try:
+            ticket_type = request.form.get('ticket_type')
+            if ticket_type not in ['single', 'daily', 'group']:
+                flash('Invalid ticket type')
+                return redirect(url_for('ticket_purchase'))
 
-        transaction = Transaction(amount=price, payment_method='card', status='completed')
-        db.session.add(transaction)
-        db.session.commit()
+            price = {'single': 10, 'daily': 30, 'group': 50}[ticket_type]
+            qr_code = f"qr_{int(datetime.now().timestamp())}_{hash(ticket_type)}"
+            ticket = Ticket(type=ticket_type, price=price, qr_code=qr_code)
+            db.session.add(ticket)
 
-        # Generate QR code
-        qr = qrcode.QRCode(version=1, box_size=10, border=5)
-        qr.add_data(ticket.qr_code)
-        qr.make(fit=True)
-        qr_img = qr.make_image(fill='black', back_color='white')
-        qr_img.save(f'static/qr_codes/{ticket.qr_code}.png')
+            transaction = Transaction(amount=price, payment_method='card', status='completed')
+            db.session.add(transaction)
+            db.session.commit()
 
-        flash('Ticket purchased successfully!')
-        return redirect(url_for('dashboard'))
+            qr = qrcode.QRCode(version=1, box_size=10, border=5)
+            qr.add_data(ticket.qr_code)
+            qr.make(fit=True)
+            qr_img = qr.make_image(fill='black', back_color='white')
+            qr_img.save(f'static/qr_codes/{qr_code}.png')
+
+            flash('Ticket purchased successfully!')
+            return redirect(url_for('dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error purchasing ticket: {str(e)}')
+            return redirect(url_for('ticket_purchase'))
     return render_template('ticket_purchase.html')
 
 @app.route('/attraction/update/<int:id>', methods=['POST'])
@@ -85,6 +98,47 @@ def update_attraction(id):
         db.session.add(record)
     db.session.commit()
     return jsonify({'message': 'Attraction updated'})
+
+@app.route('/attraction/add', methods=['GET', 'POST'])
+def add_attraction():
+    if 'user_id' not in session or session.get('role') != 'manager':
+        flash('Unauthorized access')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name')
+            capacity = request.form.get('capacity')
+            status = request.form.get('status', 'active')
+
+            if not name or not capacity:
+                flash('Name and capacity are required')
+                return redirect(url_for('add_attraction'))
+
+            try:
+                capacity = int(capacity)
+                if capacity <= 0:
+                    flash('Capacity must be a positive integer')
+                    return redirect(url_for('add_attraction'))
+            except ValueError:
+                flash('Capacity must be a valid integer')
+                return redirect(url_for('add_attraction'))
+
+            if status not in ['active', 'maintenance', 'inactive']:
+                flash('Invalid status')
+                return redirect(url_for('add_attraction'))
+
+            attraction = Attraction(name=name, capacity=capacity, status=status)
+            db.session.add(attraction)
+            db.session.commit()
+            flash('Attraction added successfully!')
+            return redirect(url_for('dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error adding attraction: {str(e)}')
+            return redirect(url_for('add_attraction'))
+
+    return render_template('add_attraction.html')
 
 @app.route('/api/report', methods=['GET'])
 def financial_report():

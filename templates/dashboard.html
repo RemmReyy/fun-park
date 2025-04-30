@@ -3,6 +3,13 @@
 {% block content %}
 <h1 class="text-3xl font-bold mb-6">Dashboard - {{ role | capitalize }}</h1>
 
+{% if role == 'manager' %}
+<div class="mb-6">
+    <h2 class="text-xl font-bold">Manage Attractions</h2>
+    <a href="{{ url_for('add_attraction') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add New Attraction</a>
+</div>
+{% endif %}
+
 {% if role == 'cashier' %}
 <div class="mb-6">
     <h2 class="text-xl font-bold">Purchase Tickets</h2>

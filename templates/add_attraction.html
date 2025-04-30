@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Add Attraction{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto bg-white p-6 rounded shadow">
+    <h2 class="text-2xl font-bold mb-4">Add New Attraction</h2>
+    <form method="POST">
+        <div class="mb-4">
+            <label class="block text-gray-700">Name</label>
+            <input type="text" name="name" class="w-full p-2 border rounded" required>
+        </div>
+        <div class="mb-4">
+            <label class="block text-gray-700">Capacity</label>
+            <input type="number" name="capacity" class="w-full p-2 border rounded" required min="1">
+        </div>
+        <div class="mb-4">
+            <label class="block text-gray-700">Status</label>
+            <select name="status" class="w-full p-2 border rounded">
+                <option value="active">Active</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add Attraction</button>
+    </form>
+</div>
+{% endblock %}
