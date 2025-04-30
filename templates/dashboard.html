@@ -1,10 +1,71 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1 class="text-3xl font-bold mb-6">Dashboard - {{ role | capitalize }}</h1>
 
-</body>
-</html>
+{% if role == 'cashier' %}
+<div class="mb-6">
+    <h2 class="text-xl font-bold">Purchase Tickets</h2>
+    <a href="{{ url_for('ticket_purchase') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Sell Ticket</a>
+</div>
+{% endif %}
+
+<h2 class="text-xl font-bold mb-4">Attractions</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {% for attraction in attractions %}
+    <div class="bg-white p-4 rounded shadow">
+        <h3 class="text-lg font-bold">{{ attraction.name }}</h3>
+        <p>Status: {{ attraction.status }}</p>
+        <p>Capacity: {{ attraction.capacity }}</p>
+        {% if role in ['technician', 'manager'] %}
+        <form method="POST" action="{{ url_for('update_attraction', id=attraction.id) }}">
+            <select name="status" class="p-2 border rounded">
+                <option value="active">Active</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="inactive">Inactive</option>
+            </select>
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Update</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+{% if role == 'manager' %}
+<div class="mt-6">
+    <h2 class="text-xl font-bold mb-4">Financial Report</h2>
+    <button onclick="fetchReport()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Generate Report</button>
+    <div id="report" class="mt-4"></div>
+</div>
+{% endif %}
+
+{% if role == 'technician' %}
+<div class="mt-6">
+    <h2 class="text-xl font-bold mb-4">Maintenance Records</h2>
+    <ul>
+        {% for record in maintenance_records %}
+        <li class="bg-white p-4 rounded shadow mb-2">
+            <p>{{ record.description }}</p>
+            <p>Status: {{ record.status }}</p>
+            <p>Date: {{ record.date }}</p>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<script>
+    async function fetchReport() {
+        const response = await fetch('/api/report');
+        const data = await response.json();
+        if (data.error) {
+            document.getElementById('report').innerHTML = `<p class="text-red-500">${data.error}</p>`;
+        } else {
+            document.getElementById('report').innerHTML = `
+                <p>Total Revenue: $${data.total_revenue}</p>
+                <p>Transactions: ${data.transaction_count}</p>
+            `;
+        }
+    }
+</script>
+{% endblock %}
