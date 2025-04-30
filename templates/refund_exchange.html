@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Повернення та обмін квитків{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto bg-white p-6 rounded shadow">
+    <h2 class="text-2xl font-bold mb-4">Повернення та обмін квитків</h2>
+
+    <!-- Form to find ticket by QR code -->
+    <form method="POST">
+        <div class="mb-4">
+            <label class="block text-gray-700">QR-код квитка</label>
+            <input type="text" name="qr_code" class="w-full p-2 border rounded" placeholder="Введіть QR-код" required>
+        </div>
+
+        {% if ticket %}
+        <div class="mb-4">
+            <p><strong>Тип квитка:</strong> {{ ticket.type | capitalize }}</p>
+            <p><strong>Ціна:</strong> ${{ ticket.price }}</p>
+            <p><strong>Статус:</strong> {{ ticket.status }}</p>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700">Дія</label>
+            <select name="action" class="w-full p-2 border rounded" onchange="toggleExchangeOptions(this)">
+                <option value="refund">Повернення</option>
+                <option value="exchange">Обмін</option>
+            </select>
+        </div>
+
+        <!-- Exchange options (hidden by default) -->
+        <div id="exchange-options" class="mb-4 hidden">
+            <label class="block text-gray-700">Новий тип квитка</label>
+            <select name="new_ticket_type" class="w-full p-2 border rounded">
+                {% for price in prices %}
+                <option value="{{ price.ticket_type }}">{{ price.ticket_type | capitalize }} (${{ price.price }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Виконати</button>
+    </form>
+</div>
+
+<script>
+    function toggleExchangeOptions(select) {
+        const exchangeOptions = document.getElementById('exchange-options');
+        if (select.value === 'exchange') {
+            exchangeOptions.classList.remove('hidden');
+        } else {
+            exchangeOptions.classList.add('hidden');
+        }
+    }
+</script>
+{% endblock %}

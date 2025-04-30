@@ -79,10 +79,10 @@ def ticket_purchase():
             price = ticket_price.price
 
             qr_code = f"qr_{int(datetime.now().timestamp())}_{hash(ticket_type)}"
-            ticket = Ticket(type=ticket_type, price=price, qr_code=qr_code)
+            ticket = Ticket(type=ticket_type, price=price, qr_code=qr_code, status='active')
             db.session.add(ticket)
 
-            transaction = Transaction(amount=price, payment_method='card', status='completed')
+            transaction = Transaction(amount=price, payment_method='card', status='completed', transaction_type='purchase')
             db.session.add(transaction)
             db.session.commit()
 
@@ -101,6 +101,98 @@ def ticket_purchase():
 
     prices = TicketPrice.query.all()
     return render_template('ticket_purchase.html', prices=prices)
+
+@app.route('/ticket/refund_exchange', methods=['GET', 'POST'])
+def refund_exchange():
+    if 'user_id' not in session or session.get('role') != 'cashier':
+        flash('Несанкціонований доступ')
+        return redirect(url_for('login'))
+
+    ticket = None
+    prices = TicketPrice.query.all()
+
+    if request.method == 'POST':
+        action = request.form.get('action')  # refund or exchange
+        qr_code = request.form.get('qr_code')
+
+        # Find ticket by QR code
+        ticket = Ticket.query.filter_by(qr_code=qr_code).first()
+        if not ticket:
+            flash('Квиток не знайдено')
+            return redirect(url_for('refund_exchange'))
+
+        if ticket.status != 'active':
+            flash('Квиток не може бути повернений або обміняний (вже використаний, повернений або обміняний)')
+            return redirect(url_for('refund_exchange'))
+
+        # Find the associated purchase transaction
+        purchase_transaction = Transaction.query.filter_by(id=ticket.id, transaction_type='purchase', status='completed').first()
+        if not purchase_transaction:
+            flash('Транзакція покупки не знайдена')
+            return redirect(url_for('refund_exchange'))
+
+        try:
+            if action == 'refund':
+                # Mark ticket as refunded
+                ticket.status = 'refunded'
+
+                # Create a refund transaction
+                refund_transaction = Transaction(
+                    amount=-purchase_transaction.amount,  # Negative amount for refund
+                    payment_method=purchase_transaction.payment_method,
+                    status='completed',
+                    transaction_type='refund'
+                )
+                db.session.add(refund_transaction)
+                db.session.commit()
+                flash('Квиток успішно повернено!')
+
+            elif action == 'exchange':
+                new_ticket_type = request.form.get('new_ticket_type')
+                if new_ticket_type not in ['single', 'daily', 'group']:
+                    flash('Невірний тип квитка для обміну')
+                    return redirect(url_for('refund_exchange'))
+
+                new_price = TicketPrice.query.filter_by(ticket_type=new_ticket_type).first()
+                if not new_price:
+                    flash('Ціна для нового типу квитка не знайдена')
+                    return redirect(url_for('refund_exchange'))
+                new_price = new_price.price
+
+                # Mark old ticket as exchanged
+                ticket.status = 'exchanged'
+
+                # Create a new ticket
+                new_qr_code = f"qr_{int(datetime.now().timestamp())}_{hash(new_ticket_type)}"
+                new_ticket = Ticket(type=new_ticket_type, price=new_price, qr_code=new_qr_code, status='active')
+                db.session.add(new_ticket)
+
+                # Calculate price difference and create an exchange transaction
+                price_difference = new_price - ticket.price
+                exchange_transaction = Transaction(
+                    amount=price_difference,  # Positive if upgrade, negative if downgrade
+                    payment_method=purchase_transaction.payment_method,
+                    status='completed',
+                    transaction_type='exchange'
+                )
+                db.session.add(exchange_transaction)
+
+                # Generate new QR code
+                qr = qrcode.QRCode(version=1, box_size=10, border=5)
+                qr.add_data(new_qr_code)
+                qr.make(fit=True)
+                qr_img = qr.make_image(fill='black', back_color='white')
+                qr_img.save(f'static/qr_codes/{new_qr_code}.png')
+
+                db.session.commit()
+                flash(f'Квиток успішно обміняно! Різниця в ціні: ${price_difference:.2f}')
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Помилка при обробці: {str(e)}')
+            return redirect(url_for('refund_exchange'))
+
+    return render_template('refund_exchange.html', ticket=ticket, prices=prices)
 
 @app.route('/attraction/update/<int:id>', methods=['POST'])
 def update_attraction(id):

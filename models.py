@@ -14,8 +14,7 @@ class Ticket(db.Model):
     type = db.Column(db.String(20), nullable=False)  # single, daily, group
     price = db.Column(db.Float, nullable=False)
     qr_code = db.Column(db.String(100), nullable=False)
-    valid_from = db.Column(db.DateTime, default=datetime.utcnow)
-    valid_to = db.Column(db.DateTime)
+    status = db.Column(db.String(20), nullable=False, default='active')  # active, used, refunded, exchanged
 
 class Attraction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -35,6 +34,7 @@ class Transaction(db.Model):
     amount = db.Column(db.Float, nullable=False)
     payment_method = db.Column(db.String(20), nullable=False)
     status = db.Column(db.String(20), nullable=False)  # completed, pending, failed
+    transaction_type = db.Column(db.String(20), nullable=False, default='purchase')  # purchase, refund, exchange
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 class TicketPrice(db.Model):
