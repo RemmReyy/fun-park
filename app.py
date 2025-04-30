@@ -1,9 +1,13 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
-from models import db, User, Ticket, Attraction, MaintenanceRecord, Transaction
+from models import db, User, Ticket, Attraction, MaintenanceRecord, Transaction, TicketPrice
 from datetime import datetime
 import qrcode
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
+from dotenv import load_dotenv
+
+# Завантажуємо змінні оточення з .env
+load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key-for-dev')
@@ -63,7 +67,12 @@ def ticket_purchase():
                 flash('Invalid ticket type')
                 return redirect(url_for('ticket_purchase'))
 
-            price = {'single': 10, 'daily': 30, 'group': 50}[ticket_type]
+            ticket_price = TicketPrice.query.filter_by(ticket_type=ticket_type).first()
+            if not ticket_price:
+                flash('Ticket type not found')
+                return redirect(url_for('ticket_purchase'))
+            price = ticket_price.price
+
             qr_code = f"qr_{int(datetime.now().timestamp())}_{hash(ticket_type)}"
             ticket = Ticket(type=ticket_type, price=price, qr_code=qr_code)
             db.session.add(ticket)
@@ -84,7 +93,9 @@ def ticket_purchase():
             db.session.rollback()
             flash(f'Error purchasing ticket: {str(e)}')
             return redirect(url_for('ticket_purchase'))
-    return render_template('ticket_purchase.html')
+
+    prices = TicketPrice.query.all()
+    return render_template('ticket_purchase.html', prices=prices)
 
 @app.route('/attraction/update/<int:id>', methods=['POST'])
 def update_attraction(id):
@@ -139,6 +150,38 @@ def add_attraction():
             return redirect(url_for('add_attraction'))
 
     return render_template('add_attraction.html')
+
+@app.route('/ticket/prices', methods=['GET', 'POST'])
+def manage_ticket_prices():
+    if session.get('role') != 'manager':
+        flash('Unauthorized access')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        ticket_type = request.form.get('ticket_type')
+        price = request.form.get('price')
+        try:
+            price = float(price)
+            if price <= 0:
+                flash('Price must be positive')
+                return redirect(url_for('manage_ticket_prices'))
+        except ValueError:
+            flash('Price must be a valid number')
+            return redirect(url_for('manage_ticket_prices'))
+
+        ticket_price = TicketPrice.query.filter_by(ticket_type=ticket_type).first()
+        if ticket_price:
+            ticket_price.price = price
+            ticket_price.updated_at = datetime.utcnow()
+        else:
+            ticket_price = TicketPrice(ticket_type=ticket_type, price=price)
+            db.session.add(ticket_price)
+        db.session.commit()
+        flash('Price updated successfully!')
+        return redirect(url_for('manage_ticket_prices'))
+
+    prices = TicketPrice.query.all()
+    return render_template('ticket_prices.html', prices=prices)
 
 @app.route('/api/report', methods=['GET'])
 def financial_report():

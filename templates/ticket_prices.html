@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Manage Ticket Prices{% endblock %}
+{% block content %}
+<h1 class="text-3xl font-bold mb-6">Manage Ticket Prices</h1>
+<div class="mb-6">
+    <h2 class="text-xl font-bold">Update Prices</h2>
+    {% for price in prices %}
+    <form method="POST" class="mb-4">
+        <div class="flex items-center">
+            <label class="block text-gray-700 w-24">{{ price.ticket_type | capitalize }}</label>
+            <input type="hidden" name="ticket_type" value="{{ price.ticket_type }}">
+            <input type="number" name="price" value="{{ price.price }}" step="0.01" class="w-32 p-2 border rounded" required>
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 ml-2">Update</button>
+        </div>
+    </form>
+    {% endfor %}
+</div>
+{% endblock %}

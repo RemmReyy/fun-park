@@ -7,9 +7,9 @@
         <div class="mb-4">
             <label class="block text-gray-700">Ticket Type</label>
             <select name="ticket_type" class="w-full p-2 border rounded">
-                <option value="single">Single ($10)</option>
-                <option value="daily">Daily ($30)</option>
-                <option value="group">Group ($50)</option>
+                {% for price in prices %}
+                <option value="{{ price.ticket_type }}">{{ price.ticket_type | capitalize }} (${{ price.price }})</option>
+                {% endfor %}
             </select>
         </div>
         <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Purchase</button>

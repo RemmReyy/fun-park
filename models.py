@@ -36,3 +36,9 @@ class Transaction(db.Model):
     payment_method = db.Column(db.String(20), nullable=False)
     status = db.Column(db.String(20), nullable=False)  # completed, pending, failed
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+class TicketPrice(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_type = db.Column(db.String(20), unique=True, nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
