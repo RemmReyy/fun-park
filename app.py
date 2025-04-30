@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from models import db, User, Ticket, Attraction, MaintenanceRecord, Transaction, TicketPrice
-from datetime import datetime
+from datetime import datetime, timedelta
 import qrcode
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -34,7 +34,7 @@ def login():
             session['user_id'] = user.id
             session['role'] = user.role
             return redirect(url_for('dashboard'))
-        flash('Invalid credentials')
+        flash('Невірні дані для входу')
     return render_template('login.html')
 
 @app.route('/dashboard')
@@ -57,19 +57,19 @@ def dashboard():
 @app.route('/ticket/purchase', methods=['GET', 'POST'])
 def ticket_purchase():
     if 'user_id' not in session or session.get('role') != 'cashier':
-        flash('Unauthorized access')
+        flash('Несанкціонований доступ')
         return redirect(url_for('login'))
 
     if request.method == 'POST':
         try:
             ticket_type = request.form.get('ticket_type')
             if ticket_type not in ['single', 'daily', 'group']:
-                flash('Invalid ticket type')
+                flash('Невірний тип квитка')
                 return redirect(url_for('ticket_purchase'))
 
             ticket_price = TicketPrice.query.filter_by(ticket_type=ticket_type).first()
             if not ticket_price:
-                flash('Ticket type not found')
+                flash('Тип квитка не знайдено')
                 return redirect(url_for('ticket_purchase'))
             price = ticket_price.price
 
@@ -87,11 +87,11 @@ def ticket_purchase():
             qr_img = qr.make_image(fill='black', back_color='white')
             qr_img.save(f'static/qr_codes/{qr_code}.png')
 
-            flash('Ticket purchased successfully!')
+            flash('Квиток успішно придбано!')
             return redirect(url_for('dashboard'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error purchasing ticket: {str(e)}')
+            flash(f'Помилка при купівлі квитка: {str(e)}')
             return redirect(url_for('ticket_purchase'))
 
     prices = TicketPrice.query.all()
@@ -100,20 +100,20 @@ def ticket_purchase():
 @app.route('/attraction/update/<int:id>', methods=['POST'])
 def update_attraction(id):
     if session.get('role') not in ['technician', 'manager']:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify({'error': 'Несанкціонований доступ'}), 403
     attraction = Attraction.query.get_or_404(id)
     status = request.form['status']
     attraction.status = status
     if status == 'maintenance':
-        record = MaintenanceRecord(description=f'Maintenance for {attraction.name}', status='ongoing', technician_id=session['user_id'])
+        record = MaintenanceRecord(description=f'Обслуговування {attraction.name}', status='ongoing', technician_id=session['user_id'])
         db.session.add(record)
     db.session.commit()
-    return jsonify({'message': 'Attraction updated'})
+    return jsonify({'message': 'Атракціон оновлено'})
 
 @app.route('/attraction/add', methods=['GET', 'POST'])
 def add_attraction():
     if 'user_id' not in session or session.get('role') != 'manager':
-        flash('Unauthorized access')
+        flash('Несанкціонований доступ')
         return redirect(url_for('login'))
 
     if request.method == 'POST':
@@ -123,30 +123,30 @@ def add_attraction():
             status = request.form.get('status', 'active')
 
             if not name or not capacity:
-                flash('Name and capacity are required')
+                flash('Назва та місткість обов’язкові')
                 return redirect(url_for('add_attraction'))
 
             try:
                 capacity = int(capacity)
                 if capacity <= 0:
-                    flash('Capacity must be a positive integer')
+                    flash('Місткість повинна бути додатною')
                     return redirect(url_for('add_attraction'))
             except ValueError:
-                flash('Capacity must be a valid integer')
+                flash('Місткість повинна бути цілим числом')
                 return redirect(url_for('add_attraction'))
 
             if status not in ['active', 'maintenance', 'inactive']:
-                flash('Invalid status')
+                flash('Невірний статус')
                 return redirect(url_for('add_attraction'))
 
             attraction = Attraction(name=name, capacity=capacity, status=status)
             db.session.add(attraction)
             db.session.commit()
-            flash('Attraction added successfully!')
+            flash('Атракціон успішно додано!')
             return redirect(url_for('dashboard'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error adding attraction: {str(e)}')
+            flash(f'Помилка при додаванні атракціону: {str(e)}')
             return redirect(url_for('add_attraction'))
 
     return render_template('add_attraction.html')
@@ -154,7 +154,7 @@ def add_attraction():
 @app.route('/ticket/prices', methods=['GET', 'POST'])
 def manage_ticket_prices():
     if session.get('role') != 'manager':
-        flash('Unauthorized access')
+        flash('Несанкціонований доступ')
         return redirect(url_for('login'))
 
     if request.method == 'POST':
@@ -163,10 +163,10 @@ def manage_ticket_prices():
         try:
             price = float(price)
             if price <= 0:
-                flash('Price must be positive')
+                flash('Ціна повинна бути додатною')
                 return redirect(url_for('manage_ticket_prices'))
         except ValueError:
-            flash('Price must be a valid number')
+            flash('Ціна повинна бути дійсним числом')
             return redirect(url_for('manage_ticket_prices'))
 
         ticket_price = TicketPrice.query.filter_by(ticket_type=ticket_type).first()
@@ -177,7 +177,7 @@ def manage_ticket_prices():
             ticket_price = TicketPrice(ticket_type=ticket_type, price=price)
             db.session.add(ticket_price)
         db.session.commit()
-        flash('Price updated successfully!')
+        flash('Ціну успішно оновлено!')
         return redirect(url_for('manage_ticket_prices'))
 
     prices = TicketPrice.query.all()
@@ -186,7 +186,33 @@ def manage_ticket_prices():
 @app.route('/api/report', methods=['GET'])
 def financial_report():
     if session.get('role') != 'manager':
-        return jsonify({'error': 'Unauthorized'}), 403
-    transactions = Transaction.query.all()
+        return jsonify({'error': 'Несанкціонований доступ'}), 403
+
+    period = request.args.get('period', 'all')  # day, week, month, all
+    transactions = Transaction.query
+
+    if period == 'day':
+        start_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        transactions = transactions.filter(Transaction.timestamp >= start_date)
+    elif period == 'week':
+        start_date = datetime.utcnow() - timedelta(days=datetime.utcnow().weekday())
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        transactions = transactions.all()
+        transactions = [t for t in transactions if t.timestamp >= start_date]
+    elif period == 'month':
+        start_date = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        transactions = transactions.filter(Transaction.timestamp >= start_date)
+
+    transactions = transactions.all()
     total_revenue = sum(t.amount for t in transactions if t.status == 'completed')
-    return jsonify({'total_revenue': total_revenue, 'transaction_count': len(transactions)})
+    ticket_types = {}
+    for t in transactions:
+        ticket = Ticket.query.filter_by(id=t.id).first()
+        if ticket and t.status == 'completed':
+            ticket_types[ticket.type] = ticket_types.get(ticket.type, 0) + 1
+
+    return jsonify({
+        'total_revenue': total_revenue,
+        'transaction_count': len([t for t in transactions if t.status == 'completed']),
+        'ticket_types': ticket_types
+    })
