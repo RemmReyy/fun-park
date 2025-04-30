@@ -25,11 +25,11 @@
         <p>Status: {{ attraction.status }}</p>
         <p>Capacity: {{ attraction.capacity }}</p>
         {% if role in ['technician', 'manager'] %}
-        <form method="POST" action="{{ url_for('update_attraction', id=attraction.id) }}">
+        <form class="update-attraction-form" data-attraction-id="{{ attraction.id }}">
             <select name="status" class="p-2 border rounded">
-                <option value="active">Active</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="inactive">Inactive</option>
+                <option value="active" {% if attraction.status == 'active' %}selected{% endif %}>Active</option>
+                <option value="maintenance" {% if attraction.status == 'maintenance' %}selected{% endif %}>Maintenance</option>
+                <option value="inactive" {% if attraction.status == 'inactive' %}selected{% endif %}>Inactive</option>
             </select>
             <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Update</button>
         </form>
@@ -62,6 +62,7 @@
 {% endif %}
 
 <script>
+    // Обробка фінансового звіту
     async function fetchReport() {
         const response = await fetch('/api/report');
         const data = await response.json();
@@ -74,5 +75,44 @@
             `;
         }
     }
+
+    // Обробка оновлення атракціонів через AJAX
+    document.querySelectorAll('.update-attraction-form').forEach(form => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const formData = new FormData(form);
+            const attractionId = form.getAttribute('data-attraction-id');
+
+            try {
+                const response = await fetch(`/attraction/update/${attractionId}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.message) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success',
+                        text: data.message,
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                } else if (data.error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.error
+                    });
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to update attraction'
+                });
+            }
+        });
+    });
 </script>
 {% endblock %}
