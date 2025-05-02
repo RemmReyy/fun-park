@@ -24,7 +24,7 @@
         <label class="block text-gray-700">Оберіть атракціон</label>
         <select name="attraction_id" class="w-full p-2 border rounded">
             <option value="">Оберіть атракціон</option>
-            {% for attraction in attractions %}
+            {% for attraction in attractions if attraction.status == 'active' %}
             <option value="{{ attraction.id }}">{{ attraction.name }}</option>
             {% endfor %}
         </select>

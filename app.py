@@ -99,6 +99,9 @@ def ticket_purchase():
                 if not attraction:
                     flash('Атракціон не знайдено')
                     return redirect(url_for('ticket_purchase'))
+                if attraction.status != 'active':
+                    flash('Обраний атракціон неактивний або на обслуговуванні')
+                    return redirect(url_for('ticket_purchase'))
                 ticket.attraction_id = int(attraction_id)
             elif ticket_type == 'daily':
                 ticket.valid_until = datetime.utcnow() + timedelta(days=1)  # Valid for 24 hours
