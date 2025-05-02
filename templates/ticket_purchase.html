@@ -1,18 +1,63 @@
 {% extends 'base.html' %}
-{% block title %}Purchase Ticket{% endblock %}
+{% block title %}Покупка квитка{% endblock %}
 {% block content %}
-<div class="max-w-md mx-auto bg-white p-6 rounded shadow">
-    <h2 class="text-2xl font-bold mb-4">Purchase Ticket</h2>
-    <form method="POST">
-        <div class="mb-4">
-            <label class="block text-gray-700">Ticket Type</label>
-            <select name="ticket_type" class="w-full p-2 border rounded">
-                {% for price in prices %}
-                <option value="{{ price.ticket_type }}">{{ price.ticket_type | capitalize }} (${{ price.price }})</option>
-                {% endfor %}
-            </select>
-        </div>
-        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Purchase</button>
-    </form>
+<h1 class="text-3xl font-bold mb-6">Покупка квитка</h1>
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+{% for message in messages %}
+<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
+    {{ message }}
 </div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+<form method="POST" class="max-w-md mx-auto" id="ticketForm">
+    <div class="mb-4">
+        <label class="block text-gray-700">Тип квитка</label>
+        <select name="ticket_type" class="w-full p-2 border rounded" required>
+            {% for price in prices %}
+            <option value="{{ price.ticket_type }}">{{ price.ticket_type | capitalize }} - ${{ price.price }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div id="single-options" class="mb-4">
+        <label class="block text-gray-700">Оберіть атракціон</label>
+        <select name="attraction_id" class="w-full p-2 border rounded">
+            <option value="">Оберіть атракціон</option>
+            {% for attraction in attractions %}
+            <option value="{{ attraction.id }}">{{ attraction.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div id="group-options" class="mb-4">
+        <label class="block text-gray-700">Розмір групи (2-10)</label>
+        <input type="number" name="group_size" min="2" max="10" class="w-full p-2 border rounded" placeholder="Вкажіть розмір групи">
+    </div>
+    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Купити квиток</button>
+</form>
+
+<script>
+    const ticketType = document.querySelector('select[name="ticket_type"]');
+    const singleOptions = document.getElementById('single-options');
+    const groupOptions = document.getElementById('group-options');
+    const form = document.getElementById('ticketForm');
+
+    ticketType.addEventListener('change', function() {
+        const selectedType = this.value;
+        singleOptions.style.display = selectedType === 'single' ? 'block' : 'none';
+        groupOptions.style.display = selectedType === 'group' ? 'block' : 'none';
+
+        // Make attraction_id required only for single
+        const attractionSelect = singleOptions.querySelector('select[name="attraction_id"]');
+        attractionSelect.required = selectedType === 'single';
+    });
+
+    // Trigger change event on page load
+    ticketType.dispatchEvent(new Event('change'));
+
+    // Add form submission logging
+    form.addEventListener('submit', function(event) {
+        console.log('Form submitted with data:', new FormData(form));
+    });
+</script>
 {% endblock %}

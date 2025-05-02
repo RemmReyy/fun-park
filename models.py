@@ -21,6 +21,10 @@ class Ticket(db.Model):
     price = db.Column(db.Float, nullable=False)
     qr_code = db.Column(db.String(100), nullable=False)
     status = db.Column(db.String(20), nullable=False, default='active')  # active, used, refunded, exchanged
+    attraction_id = db.Column(db.Integer, db.ForeignKey('attraction.id'), nullable=True)  # For single tickets
+    valid_until = db.Column(db.DateTime, nullable=True)  # For daily tickets
+    group_size = db.Column(db.Integer, nullable=True)  # For group tickets
+    used_count = db.Column(db.Integer, nullable=True, default=0)  # For daily tickets, track usage
 
 class MaintenanceRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
