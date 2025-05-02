@@ -7,7 +7,13 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
-    role = db.Column(db.String(20), nullable=False)  # manager, cashier, technician, visitor
+    role = db.Column(db.String(20), nullable=False)  # manager, cashier, technician, operator
+
+class Attraction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    capacity = db.Column(db.Integer, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='active')  # active, maintenance, inactive
 
 class Ticket(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -16,18 +22,12 @@ class Ticket(db.Model):
     qr_code = db.Column(db.String(100), nullable=False)
     status = db.Column(db.String(20), nullable=False, default='active')  # active, used, refunded, exchanged
 
-class Attraction(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    status = db.Column(db.String(20), default='active')  # active, maintenance, inactive
-    capacity = db.Column(db.Integer, nullable=False)
-
 class MaintenanceRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    description = db.Column(db.Text, nullable=False)
+    description = db.Column(db.String(200), nullable=False)
     status = db.Column(db.String(20), nullable=False)  # ongoing, completed
-    technician_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    date = db.Column(db.DateTime, default=datetime.utcnow)
+    date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    technician_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 class Transaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -40,6 +40,17 @@ class Transaction(db.Model):
 
 class TicketPrice(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    ticket_type = db.Column(db.String(20), unique=True, nullable=False)
+    ticket_type = db.Column(db.String(20), nullable=False, unique=True)  # single, daily, group
     price = db.Column(db.Float, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+class Queue(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    attraction_id = db.Column(db.Integer, db.ForeignKey('attraction.id'), nullable=False)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'), nullable=False)
+    position = db.Column(db.Integer, nullable=False)  # Position in the queue (1, 2, 3...)
+    added_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    # Relationships
+    ticket = db.relationship('Ticket', backref='queues', lazy='select')
+    attraction = db.relationship('Attraction', backref='queues', lazy='select')

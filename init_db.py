@@ -12,7 +12,8 @@ with app.app_context():
     manager = User(username='manager', password=generate_password_hash('password'), role='manager')
     cashier = User(username='cashier', password=generate_password_hash('password'), role='cashier')
     technician = User(username='technician', password=generate_password_hash('password'), role='technician')
-    db.session.add_all([manager, cashier, technician])
+    operator = User(username='operator', password=generate_password_hash('password'), role='operator')  # New operator role
+    db.session.add_all([manager, cashier, technician, operator])
 
     # Create initial ticket prices
     single_price = TicketPrice(ticket_type='single', price=10.0)

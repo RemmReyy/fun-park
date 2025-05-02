@@ -36,6 +36,30 @@
             <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Оновити</button>
         </form>
         {% endif %}
+        {% if role == 'operator' %}
+        <div class="mt-4">
+            <h4 class="text-md font-bold">Додати в чергу</h4>
+            <form action="{{ url_for('add_to_queue') }}" method="POST" class="mb-4">
+                <input type="hidden" name="attraction_id" value="{{ attraction.id }}">
+                <div class="mb-2">
+                    <label class="block text-gray-700">QR-код квитка</label>
+                    <input type="text" name="qr_code" class="w-full p-2 border rounded" placeholder="Введіть QR-код" required>
+                </div>
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Додати в чергу</button>
+            </form>
+            <h4 class="text-md font-bold">Черга ({{ queues[attraction.id] | length }}/{{ attraction.capacity }})</h4>
+            <ul>
+                {% for queue_entry in queues[attraction.id] %}
+                <li class="flex items-center justify-between py-2">
+                    <span>Позиція {{ queue_entry.position }}: Квиток #{{ queue_entry.ticket_id }} ({{ queue_entry.ticket.type | capitalize }})</span>
+                    <button onclick="processQueue({{ queue_entry.id }})" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">Пропустити</button>
+                </li>
+                {% else %}
+                <li>Черга порожня</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
     </div>
     {% endfor %}
 </div>
@@ -153,5 +177,39 @@
             }
         });
     });
+
+    // Обробка черги через AJAX
+    async function processQueue(queueId) {
+        try {
+            const response = await fetch(`/queue/process/${queueId}`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+
+            if (data.message) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Успіх',
+                    text: data.message,
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => {
+                    location.reload();  // Reload the page to update the queue
+                });
+            } else if (data.error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Помилка',
+                    text: data.error
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Помилка',
+                text: 'Не вдалося обробити чергу'
+            });
+        }
+    }
 </script>
 {% endblock %}

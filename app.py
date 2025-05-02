@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_file
-from models import db, User, Ticket, Attraction, MaintenanceRecord, Transaction, TicketPrice
+from models import db, User, Ticket, Attraction, MaintenanceRecord, Transaction, TicketPrice, Queue
 from datetime import datetime, timedelta
 import qrcode
 import os
@@ -57,6 +57,15 @@ def dashboard():
     elif role == 'technician':
         maintenance_records = MaintenanceRecord.query.all()
         return render_template('dashboard.html', role=role, attractions=attractions, maintenance_records=maintenance_records)
+    elif role == 'operator':
+        # Show only active attractions for operators
+        active_attractions = Attraction.query.filter_by(status='active').all()
+        # Get queue for each attraction
+        queues = {}
+        for attraction in active_attractions:
+            queue_entries = Queue.query.filter_by(attraction_id=attraction.id).order_by(Queue.position).all()
+            queues[attraction.id] = queue_entries
+        return render_template('dashboard.html', role=role, attractions=active_attractions, queues=queues)
     return render_template('dashboard.html', role=role, attractions=attractions)
 
 @app.route('/ticket/purchase', methods=['GET', 'POST'])
@@ -434,3 +443,88 @@ def financial_report_pdf():
     buffer.seek(0)
 
     return send_file(buffer, as_attachment=True, download_name=f"financial_report_{period}_{datetime.utcnow().strftime('%Y%m%d')}.pdf", mimetype='application/pdf')
+
+@app.route('/queue/add', methods=['POST'])
+def add_to_queue():
+    if 'user_id' not in session or session.get('role') != 'operator':
+        flash('Несанкціонований доступ')
+        return redirect(url_for('login'))
+
+    qr_code = request.form.get('qr_code')
+    attraction_id = request.form.get('attraction_id')
+
+    # Validate attraction
+    attraction = Attraction.query.get(attraction_id)
+    if not attraction or attraction.status != 'active':
+        flash('Атракціон не доступний')
+        return redirect(url_for('dashboard'))
+
+    # Find ticket by QR code
+    ticket = Ticket.query.filter_by(qr_code=qr_code).first()
+    if not ticket:
+        flash('Квиток не знайдено')
+        return redirect(url_for('dashboard'))
+
+    # Check ticket status
+    if ticket.status != 'active':
+        flash('Квиток не може бути використаний (вже використаний, повернений або обміняний)')
+        return redirect(url_for('dashboard'))
+
+    # Check if ticket is already in any queue
+    existing_queue = Queue.query.filter_by(ticket_id=ticket.id).first()
+    if existing_queue:
+        flash('Квиток уже в черзі на іншому атракціоні')
+        return redirect(url_for('dashboard'))
+
+    # Check queue capacity
+    current_queue_size = Queue.query.filter_by(attraction_id=attraction_id).count()
+    if current_queue_size >= attraction.capacity:
+        flash('Черга на атракціон повна')
+        return redirect(url_for('dashboard'))
+
+    # Add to queue
+    try:
+        # Determine the next position in the queue
+        last_position = Queue.query.filter_by(attraction_id=attraction_id).order_by(Queue.position.desc()).first()
+        next_position = last_position.position + 1 if last_position else 1
+
+        queue_entry = Queue(attraction_id=attraction_id, ticket_id=ticket.id, position=next_position)
+        db.session.add(queue_entry)
+        db.session.commit()
+        flash('Квиток успішно додано в чергу!')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Помилка при додаванні в чергу: {str(e)}')
+
+    return redirect(url_for('dashboard'))
+
+@app.route('/queue/process/<int:queue_id>', methods=['POST'])
+def process_queue(queue_id):
+    if 'user_id' not in session or session.get('role') != 'operator':
+        return jsonify({'error': 'Несанкціонований доступ'}), 403
+
+    queue_entry = Queue.query.get(queue_id)
+    if not queue_entry:
+        return jsonify({'error': 'Запис у черзі не знайдено'}), 404
+
+    ticket = Ticket.query.get(queue_entry.ticket_id)
+    if not ticket:
+        return jsonify({'error': 'Квиток не знайдено'}), 404
+
+    try:
+        # Mark ticket as used
+        ticket.status = 'used'
+
+        # Remove from queue
+        db.session.delete(queue_entry)
+
+        # Update positions of remaining queue entries
+        remaining_entries = Queue.query.filter_by(attraction_id=queue_entry.attraction_id).order_by(Queue.position).all()
+        for index, entry in enumerate(remaining_entries, start=1):
+            entry.position = index
+
+        db.session.commit()
+        return jsonify({'message': 'Відвідувача пропущено на атракціон!'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Помилка при обробці черги: {str(e)}'}), 500
