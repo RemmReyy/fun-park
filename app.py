@@ -468,8 +468,12 @@ def add_to_queue():
     attraction_id = request.form.get('attraction_id')
 
     attraction = Attraction.query.get(attraction_id)
-    if not attraction or attraction.status != 'active':
-        flash('Атракціон не доступний')
+    if not attraction:
+        flash('Атракціон не знайдено')
+        return redirect(url_for('dashboard'))
+
+    if attraction.status != 'active':
+        flash('Атракціон неактивний або на обслуговуванні')
         return redirect(url_for('dashboard'))
 
     ticket = Ticket.query.filter_by(qr_code=qr_code).first()
