@@ -50,11 +50,10 @@ class TicketPrice(db.Model):
 
 class Queue(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    attraction_id = db.Column(db.Integer, db.ForeignKey('attraction.id'), nullable=False)
+    attraction_id = db.Column(db.Integer, db.ForeignKey('attraction.id', ondelete='CASCADE'), nullable=False)
     ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'), nullable=False)
-    position = db.Column(db.Integer, nullable=False)  # Position in the queue (1, 2, 3...)
+    position = db.Column(db.Integer, nullable=False)
     added_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
-    # Relationships
     ticket = db.relationship('Ticket', backref='queues', lazy='select')
     attraction = db.relationship('Attraction', backref='queues', lazy='select')

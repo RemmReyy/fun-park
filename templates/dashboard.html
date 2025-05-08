@@ -27,13 +27,18 @@
         <p>Статус: {{ attraction.status }}</p>
         <p>Місткість: {{ attraction.capacity }}</p>
         {% if role in ['technician', 'manager'] %}
-        <form class="update-attraction-form" data-attraction-id="{{ attraction.id }}">
+        <form class="update-attraction-form mb-2" data-attraction-id="{{ attraction.id }}">
             <select name="status" class="p-2 border rounded">
                 <option value="active" {% if attraction.status == 'active' %}selected{% endif %}>Активний</option>
                 <option value="maintenance" {% if attraction.status == 'maintenance' %}selected{% endif %}>На обслуговуванні</option>
                 <option value="inactive" {% if attraction.status == 'inactive' %}selected{% endif %}>Неактивний</option>
             </select>
             <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Оновити</button>
+        </form>
+        {% endif %}
+        {% if role == 'manager' %}
+        <form action="{{ url_for('delete_attraction', id=attraction.id) }}" method="POST" class="mt-2" onsubmit="return confirm('Ви впевнені, що хочете видалити атракціон {{ attraction.name }}? Ця дія незворотна!');">
+            <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Видалити атракціон</button>
         </form>
         {% endif %}
         {% if role == 'operator' %}

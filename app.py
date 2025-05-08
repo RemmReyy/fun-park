@@ -550,3 +550,19 @@ def process_queue(queue_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Помилка при обробці черги: {str(e)}'}), 500
+
+@app.route('/attraction/delete/<int:id>', methods=['POST'])
+def delete_attraction(id):
+    attraction = Attraction.query.get_or_404(id)
+    if attraction:
+        # Видаляємо пов’язані записи черги
+        Queue.query.filter_by(attraction_id=id).delete()
+        # Видаляємо пов’язані одиничні квитки
+        Ticket.query.filter_by(attraction_id=id, type='single').delete()
+        # Видаляємо сам атракціон
+        db.session.delete(attraction)
+        db.session.commit()
+        flash('Атракціон успішно видалено!', 'success')
+    else:
+        flash('Атракціон не знайдено.', 'error')
+    return redirect(url_for('dashboard'))
