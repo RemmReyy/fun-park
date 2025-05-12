@@ -58,7 +58,16 @@ def dashboard():
 
     user = User.query.get(session['user_id'])
     role = user.role
-    attractions = Attraction.query.all() if role == 'manager' else Attraction.query.filter_by(status='maintenance').all()
+    if role == 'manager':
+        attractions = Attraction.query.all()
+    elif role == 'technician':
+        attractions = Attraction.query.filter_by(status='maintenance').all()
+    elif role == 'cashier':
+        attractions = Attraction.query.filter_by(status='active').all()
+    elif role == 'operator':
+        attractions = Attraction.query.filter_by(status='active').all()
+    else:
+        attractions = []
     queues = {attraction.id: Queue.query.filter_by(attraction_id=attraction.id).order_by(Queue.position).all() for attraction in attractions}
 
     maintenance_records = MaintenanceRecord.query.all()
