@@ -82,7 +82,7 @@
         <p>Статус: {{ attraction.status }}</p>
         <p>Місткість: {{ attraction.capacity }}</p>
         {% if role in ['manager'] %}
-        <form method="POST" action="{{ url_for('update_attraction_status', id=attraction.id) }}" class="mb-2">
+        <form method="POST" action="{{ url_for('update_attraction', id=attraction.id) }}" class="mb-2">
             <input type="hidden" name="role" value="technician">
             <select name="status" class="p-2 border rounded">
                 <option value="active" {% if attraction.status == 'active' %}selected{% endif %}>Активний</option>

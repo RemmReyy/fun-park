@@ -247,16 +247,12 @@ def refund_exchange():
 
 @app.route('/attraction/update/<int:id>', methods=['POST'])
 def update_attraction(id):
-    if 'manager' in request.form.get('role', '') or 'technician' in request.form.get('role', ''):
+    if 'technician' in request.form.get('role', ''):
         attraction = Attraction.query.get_or_404(id)
         new_status = request.form.get('status')
         if new_status in ['active', 'maintenance', 'inactive']:
-            old_status = attraction.status
             attraction.status = new_status
             db.session.commit()
-            if new_status == 'maintenance' and old_status != 'maintenance':
-                # Сповіщення для техніка
-                flash(f'Атракціон "{attraction.name}" потребує обслуговування!', 'maintenance_alert')
             flash('Статус атракціону оновлено!', 'success')
         else:
             flash('Недопустимий статус.', 'error')
@@ -611,21 +607,6 @@ def add_maintenance():
         flash('Запис про обслуговування додано!', 'success')
         return redirect(url_for('dashboard'))
     return render_template('add_maintenance.html', attractions=Attraction.query.all())
-
-@app.route('/attraction/update_status/<int:id>', methods=['POST'])
-def update_attraction_status(id):
-    if 'technician' in request.form.get('role', ''):
-        attraction = Attraction.query.get_or_404(id)
-        new_status = request.form.get('status')
-        if new_status in ['active', 'maintenance', 'inactive']:
-            attraction.status = new_status
-            db.session.commit()
-            flash('Статус атракціону оновлено!', 'success')
-        else:
-            flash('Недопустимий статус.', 'error')
-        return redirect(url_for('dashboard'))
-    flash('Доступ заборонено.', 'error')
-    return redirect(url_for('dashboard'))
 
 @app.route('/maintenance/edit/<int:id>', methods=['POST'])
 def edit_maintenance(id):
