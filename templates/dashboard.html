@@ -3,6 +3,58 @@
 {% block content %}
 <h1 class="text-3xl font-bold mb-6">Панель керування - {{ role | capitalize }}</h1>
 
+{% if role == 'technician' %}
+<div class="mb-6">
+    <h2 class="text-xl font-bold">Технічне обслуговування</h2>
+    <a href="{{ url_for('add_maintenance') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Додати запис про обслуговування</a>
+</div>
+
+<div class="mt-6">
+    <h2 class="text-xl font-bold mb-4">Записи про обслуговування</h2>
+    <ul>
+        {% for record in maintenance_records %}
+        <li class="bg-white p-4 rounded shadow mb-2 border-l-4 {% if record.status == 'ongoing' %}border-yellow-500{% else %}border-green-500{% endif %}">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="font-bold">Атракціон: {{ record.attraction_name }}</p>
+                    <p class="text-gray-700">Опис: {{ record.description or 'Без опису' }}</p>
+                    <p>Статус: {{ record.status | capitalize }}</p>
+                    <p>Дата: {{ record.date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                    <p>Технік: {{ record.technician_name }}</p>
+                </div>
+                <div>
+                    <button onclick="editMaintenance({{ loop.index0 }})" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">Редагувати</button>
+                </div>
+            </div>
+            <form id="edit-form-{{ loop.index0 }}" class="hidden mt-2" method="POST" action="{{ url_for('edit_maintenance', id=record.id) }}">
+                <input type="hidden" name="role" value="technician">
+                <div class="mb-2">
+                    <label class="block text-gray-700">Опис</label>
+                    <textarea name="description" class="w-full p-2 border rounded">{{ record.description or '' }}</textarea>
+                </div>
+                <div class="mb-2">
+                    <label class="block text-gray-700">Статус</label>
+                    <select name="status" class="w-full p-2 border rounded">
+                        <option value="ongoing" {% if record.status == 'ongoing' %}selected{% endif %}>Триває</option>
+                        <option value="completed" {% if record.status == 'completed' %}selected{% endif %}>Завершено</option>
+                    </select>
+                </div>
+                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Зберегти</button>
+            </form>
+        </li>
+        {% else %}
+        <li class="bg-white p-4 rounded shadow mb-2 text-gray-500">Записів немає.</li>
+        {% endfor %}
+    </ul>
+</div>
+<script>
+    function editMaintenance(index) {
+        const form = document.getElementById(`edit-form-${index}`);
+        form.classList.toggle('hidden');
+    }
+</script>
+{% endif %}
+
 {% if role == 'manager' %}
 <div class="mb-6">
     <h2 class="text-xl font-bold">Керування атракціонами</h2>
@@ -27,13 +79,14 @@
         <p>Статус: {{ attraction.status }}</p>
         <p>Місткість: {{ attraction.capacity }}</p>
         {% if role in ['technician', 'manager'] %}
-        <form class="update-attraction-form mb-2" data-attraction-id="{{ attraction.id }}">
+        <form method="POST" action="{{ url_for('update_attraction_status', id=attraction.id) }}" class="mb-2">
+            <input type="hidden" name="role" value="technician">
             <select name="status" class="p-2 border rounded">
                 <option value="active" {% if attraction.status == 'active' %}selected{% endif %}>Активний</option>
                 <option value="maintenance" {% if attraction.status == 'maintenance' %}selected{% endif %}>На обслуговуванні</option>
                 <option value="inactive" {% if attraction.status == 'inactive' %}selected{% endif %}>Неактивний</option>
             </select>
-            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Оновити</button>
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Оновити статус</button>
         </form>
         {% endif %}
         {% if role == 'manager' %}
@@ -83,21 +136,6 @@
         <button onclick="downloadPDF()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Експортувати в PDF</button>
     </div>
     <div id="report" class="mt-4"></div>
-</div>
-{% endif %}
-
-{% if role == 'technician' %}
-<div class="mt-6">
-    <h2 class="text-xl font-bold mb-4">Записи про обслуговування</h2>
-    <ul>
-        {% for record in maintenance_records %}
-        <li class="bg-white p-4 rounded shadow mb-2">
-            <p>{{ record.description }}</p>
-            <p>Статус: {{ record.status }}</p>
-            <p>Дата: {{ record.date }}</p>
-        </li>
-        {% endfor %}
-    </ul>
 </div>
 {% endif %}
 

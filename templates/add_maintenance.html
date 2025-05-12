@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Додати обслуговування{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto bg-white p-6 rounded shadow">
+    <h2 class="text-2xl font-bold mb-4">Додати запис про обслуговування</h2>
+    <form method="POST">
+        <input type="hidden" name="role" value="technician">
+        <input type="hidden" name="user_id" value="{{ session.user_id }}">
+        <div class="mb-4">
+            <label for="attraction_id" class="block text-gray-700">Атракціон</label>
+            <select name="attraction_id" id="attraction_id" class="w-full p-2 border rounded" required>
+                {% for attraction in attractions %}
+                <option value="{{ attraction.id }}">{{ attraction.name }} ({{ attraction.status }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-4">
+            <label for="description" class="block text-gray-700">Опис</label>
+            <textarea name="description" id="description" class="w-full p-2 border rounded" required></textarea>
+        </div>
+        <div class="mb-4">
+            <label for="status" class="block text-gray-700">Статус</label>
+            <select name="status" id="status" class="w-full p-2 border rounded">
+                <option value="ongoing">Триває</option>
+                <option value="completed">Завершено</option>
+            </select>
+        </div>
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Додати запис</button>
+    </form>
+</div>
+{% endblock %}

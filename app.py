@@ -46,25 +46,26 @@ def login():
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    role = session['role']
+
+    user = User.query.get(session['user_id'])
+    role = user.role
     attractions = Attraction.query.all()
-    if role == 'manager':
-        tickets = Ticket.query.all()
-        transactions = Transaction.query.all()
-        return render_template('dashboard.html', role=role, attractions=attractions, tickets=tickets, transactions=transactions)
-    elif role == 'cashier':
-        return render_template('dashboard.html', role=role, attractions=attractions)
-    elif role == 'technician':
-        maintenance_records = MaintenanceRecord.query.all()
-        return render_template('dashboard.html', role=role, attractions=attractions, maintenance_records=maintenance_records)
-    elif role == 'operator':
-        active_attractions = Attraction.query.filter_by(status='active').all()
-        queues = {}
-        for attraction in active_attractions:
-            queue_entries = Queue.query.filter_by(attraction_id=attraction.id).order_by(Queue.position).all()
-            queues[attraction.id] = queue_entries
-        return render_template('dashboard.html', role=role, attractions=active_attractions, queues=queues)
-    return render_template('dashboard.html', role=role, attractions=attractions)
+    queues = {attraction.id: Queue.query.filter_by(attraction_id=attraction.id).order_by(Queue.position).all() for attraction in attractions}
+
+    maintenance_records = MaintenanceRecord.query.all()
+    maintenance_data = [
+        {
+            'id': record.id,  # Додаємо id
+            'description': record.description,
+            'status': record.status,
+            'date': record.date,
+            'technician_name': User.query.get(record.technician_id).username if record.technician_id else 'Невідомий',
+            'attraction_name': Attraction.query.get(record.attraction_id).name if record.attraction_id else 'Невідомий'
+        }
+        for record in maintenance_records
+    ]
+
+    return render_template('dashboard.html', role=role, attractions=attractions, queues=queues, maintenance_records=maintenance_data)
 
 @app.route('/ticket/purchase', methods=['GET', 'POST'])
 def ticket_purchase():
@@ -565,4 +566,60 @@ def delete_attraction(id):
         flash('Атракціон успішно видалено!', 'success')
     else:
         flash('Атракціон не знайдено.', 'error')
+    return redirect(url_for('dashboard'))
+
+@app.route('/maintenance/add', methods=['GET', 'POST'])
+def add_maintenance():
+    if request.method == 'POST' and 'technician' in request.form.get('role', ''):
+        description = request.form.get('description')
+        attraction_id = request.form.get('attraction_id')
+        status = request.form.get('status', 'ongoing')
+
+        if not description or not attraction_id:
+            flash('Опис і атракціон є обов’язковими!', 'error')
+            return redirect(url_for('dashboard'))
+
+        attraction = Attraction.query.get(attraction_id)
+        if not attraction:
+            flash('Атракціон не знайдено.', 'error')
+            return redirect(url_for('dashboard'))
+
+        record = MaintenanceRecord(
+            description=description,
+            status=status,
+            technician_id=request.form.get('user_id'),
+            attraction_id=attraction_id,
+            date=datetime.utcnow()
+        )
+        db.session.add(record)
+        db.session.commit()
+        flash('Запис про обслуговування додано!', 'success')
+        return redirect(url_for('dashboard'))
+    return render_template('add_maintenance.html', attractions=Attraction.query.all())
+
+@app.route('/attraction/update_status/<int:id>', methods=['POST'])
+def update_attraction_status(id):
+    if 'technician' in request.form.get('role', ''):
+        attraction = Attraction.query.get_or_404(id)
+        new_status = request.form.get('status')
+        if new_status in ['active', 'maintenance', 'inactive']:
+            attraction.status = new_status
+            db.session.commit()
+            flash('Статус атракціону оновлено!', 'success')
+        else:
+            flash('Недопустимий статус.', 'error')
+        return redirect(url_for('dashboard'))
+    flash('Доступ заборонено.', 'error')
+    return redirect(url_for('dashboard'))
+
+@app.route('/maintenance/edit/<int:id>', methods=['POST'])
+def edit_maintenance(id):
+    if 'technician' in request.form.get('role', ''):
+        record = MaintenanceRecord.query.get_or_404(id)
+        record.description = request.form.get('description')
+        record.status = request.form.get('status')
+        db.session.commit()
+        flash('Запис про обслуговування оновлено!', 'success')
+    else:
+        flash('Доступ заборонено.', 'error')
     return redirect(url_for('dashboard'))

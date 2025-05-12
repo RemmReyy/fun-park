@@ -28,10 +28,13 @@ class Ticket(db.Model):
 
 class MaintenanceRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    description = db.Column(db.String(200), nullable=False)
-    status = db.Column(db.String(20), nullable=False)  # ongoing, completed
+    description = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), nullable=False)
+    technician_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    attraction_id = db.Column(db.Integer, db.ForeignKey('attraction.id'), nullable=False)
     date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    technician_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    technician = db.relationship('User', backref='maintenance_records', lazy='select')
+    attraction = db.relationship('Attraction', backref='maintenance_records', lazy='select')
 
 class Transaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
