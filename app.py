@@ -49,13 +49,13 @@ def dashboard():
 
     user = User.query.get(session['user_id'])
     role = user.role
-    attractions = Attraction.query.all()
+    attractions = Attraction.query.all() if role == 'manager' else Attraction.query.filter_by(status='maintenance').all()
     queues = {attraction.id: Queue.query.filter_by(attraction_id=attraction.id).order_by(Queue.position).all() for attraction in attractions}
 
     maintenance_records = MaintenanceRecord.query.all()
     maintenance_data = [
         {
-            'id': record.id,  # Додаємо id
+            'id': record.id,
             'description': record.description,
             'status': record.status,
             'date': record.date,
@@ -238,16 +238,22 @@ def refund_exchange():
 
 @app.route('/attraction/update/<int:id>', methods=['POST'])
 def update_attraction(id):
-    if session.get('role') not in ['technician', 'manager']:
-        return jsonify({'error': 'Несанкціонований доступ'}), 403
-    attraction = Attraction.query.get_or_404(id)
-    status = request.form['status']
-    attraction.status = status
-    if status == 'maintenance':
-        record = MaintenanceRecord(description=f'Обслуговування {attraction.name}', status='ongoing', technician_id=session['user_id'])
-        db.session.add(record)
-    db.session.commit()
-    return jsonify({'message': 'Атракціон оновлено'})
+    if 'manager' in request.form.get('role', '') or 'technician' in request.form.get('role', ''):
+        attraction = Attraction.query.get_or_404(id)
+        new_status = request.form.get('status')
+        if new_status in ['active', 'maintenance', 'inactive']:
+            old_status = attraction.status
+            attraction.status = new_status
+            db.session.commit()
+            if new_status == 'maintenance' and old_status != 'maintenance':
+                # Сповіщення для техніка
+                flash(f'Атракціон "{attraction.name}" потребує обслуговування!', 'maintenance_alert')
+            flash('Статус атракціону оновлено!', 'success')
+        else:
+            flash('Недопустимий статус.', 'error')
+        return redirect(url_for('dashboard'))
+    flash('Доступ заборонено.', 'error')
+    return redirect(url_for('dashboard'))
 
 @app.route('/attraction/add', methods=['GET', 'POST'])
 def add_attraction():

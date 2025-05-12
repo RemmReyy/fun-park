@@ -8,7 +8,6 @@
     <h2 class="text-xl font-bold">Технічне обслуговування</h2>
     <a href="{{ url_for('add_maintenance') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Додати запис про обслуговування</a>
 </div>
-
 <div class="mt-6">
     <h2 class="text-xl font-bold mb-4">Записи про обслуговування</h2>
     <ul>
@@ -82,7 +81,7 @@
         <h3 class="text-lg font-bold">{{ attraction.name }}</h3>
         <p>Статус: {{ attraction.status }}</p>
         <p>Місткість: {{ attraction.capacity }}</p>
-        {% if role in ['technician', 'manager'] %}
+        {% if role in ['manager'] %}
         <form method="POST" action="{{ url_for('update_attraction_status', id=attraction.id) }}" class="mb-2">
             <input type="hidden" name="role" value="technician">
             <select name="status" class="p-2 border rounded">
