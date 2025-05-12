@@ -623,3 +623,14 @@ def edit_maintenance(id):
     else:
         flash('Доступ заборонено.', 'error')
     return redirect(url_for('dashboard'))
+
+@app.route('/maintenance/delete/<int:id>', methods=['POST'])
+def delete_maintenance(id):
+    if 'technician' in request.form.get('role', ''):
+        record = MaintenanceRecord.query.get_or_404(id)
+        db.session.delete(record)
+        db.session.commit()
+        flash('Запис про обслуговування видалено!', 'success')
+    else:
+        flash('Доступ заборонено.', 'error')
+    return redirect(url_for('dashboard'))
