@@ -26,8 +26,11 @@ with app.app_context():
 
 # Routes
 @app.route('/')
+@app.route('/index')
 def index():
-    return render_template('index.html')
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -39,8 +42,14 @@ def login():
             session['user_id'] = user.id
             session['role'] = user.role
             return redirect(url_for('dashboard'))
-        flash('Невірні дані для входу')
+        flash('Невірні дані для входу', 'error')
     return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    flash('Ви успішно вийшли з системи!', 'success')
+    return redirect(url_for('login'))
 
 @app.route('/dashboard')
 def dashboard():
