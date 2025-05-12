@@ -1,122 +1,120 @@
 {% extends 'base.html' %}
 {% block title %}Панель керування{% endblock %}
 {% block content %}
-<h1 class="text-3xl font-bold mb-6">Панель керування - {{ role | capitalize }}</h1>
+<h1 class="text-3xl font-bold mb-6 text-indigo-700">Панель керування - {{ role | capitalize }}</h1>
 
 {% if role == 'technician' %}
 <div class="mb-6">
-    <h2 class="text-xl font-bold">Технічне обслуговування</h2>
-    <a href="{{ url_for('add_maintenance') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Додати запис про обслуговування</a>
+    <h2 class="text-2xl font-bold text-indigo-700 mb-4">Технічне обслуговування</h2>
+    <a href="{{ url_for('add_maintenance') }}" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-md hover:shadow-lg">Додати запис про обслуговування</a>
 </div>
 <div class="mt-6">
-    <h2 class="text-xl font-bold mb-4">Записи про обслуговування</h2>
+    <h2 class="text-2xl font-bold text-indigo-700 mb-4">Записи про обслуговування</h2>
     <ul>
         {% for record in maintenance_records %}
-        <li class="bg-white p-4 rounded shadow mb-2 border-l-4 {% if record.status == 'ongoing' %}border-yellow-500{% else %}border-green-500{% endif %}">
+        <li class="bg-white p-6 rounded-lg shadow-lg mb-4 border-l-4 {% if record.status == 'ongoing' %}border-yellow-500{% else %}border-green-500{% endif %} hover:shadow-xl transition-shadow duration-300">
             <div class="flex justify-between items-center">
                 <div>
-                    <p class="font-bold">Атракціон: {{ record.attraction_name }}</p>
-                    <p class="text-gray-700">Опис: {{ record.description or 'Без опису' }}</p>
-                    <p>Статус: {{ record.status | capitalize }}</p>
-                    <p>Дата: {{ record.date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
-                    <p>Технік: {{ record.technician_name }}</p>
+                    <p class="font-bold text-gray-800">Атракціон: {{ record.attraction_name }}</p>
+                    <p class="text-gray-600">Опис: {{ record.description or 'Без опису' }}</p>
+                    <p class="text-gray-600">Статус: <span class="font-semibold">{{ record.status | capitalize }}</span></p>
+                    <p class="text-gray-600">Дата: {{ record.date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                    <p class="text-gray-600">Технік: {{ record.technician_name }}</p>
                 </div>
-                <div class="space-x-2">
-                    <button onclick="editMaintenance({{ loop.index0 }})" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">Редагувати</button>
+                <div class="space-x-3">
+                    <button onclick="editMaintenance({{ loop.index0 }})" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-200">Редагувати</button>
                     <form action="{{ url_for('delete_maintenance', id=record.id) }}" method="POST" onsubmit="return confirm('Ви впевнені, що хочете видалити цей запис? Ця дія незворотна!');" style="display:inline;">
                         <input type="hidden" name="role" value="technician">
-                        <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700">Видалити</button>
+                        <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors duration-200">Видалити</button>
                     </form>
                 </div>
             </div>
-            <form id="edit-form-{{ loop.index0 }}" class="hidden mt-2" method="POST" action="{{ url_for('edit_maintenance', id=record.id) }}">
+            <form id="edit-form-{{ loop.index0 }}" class="hidden mt-4" method="POST" action="{{ url_for('edit_maintenance', id=record.id) }}">
                 <input type="hidden" name="role" value="technician">
-                <div class="mb-2">
-                    <label class="block text-gray-700">Опис</label>
-                    <textarea name="description" class="w-full p-2 border rounded">{{ record.description or '' }}</textarea>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium">Опис</label>
+                    <textarea name="description" class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">{{ record.description or '' }}</textarea>
                 </div>
-                <div class="mb-2">
-                    <label class="block text-gray-700">Статус</label>
-                    <select name="status" class="w-full p-2 border rounded">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium">Статус</label>
+                    <select name="status" class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="ongoing" {% if record.status == 'ongoing' %}selected{% endif %}>Триває</option>
                         <option value="completed" {% if record.status == 'completed' %}selected{% endif %}>Завершено</option>
                     </select>
                 </div>
-                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Зберегти</button>
+                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors duration-200">Зберегти</button>
             </form>
         </li>
         {% else %}
-        <li class="bg-white p-4 rounded shadow mb-2 text-gray-500">Записів немає.</li>
+        <li class="bg-gray-100 p-4 rounded-lg shadow text-gray-500">Записів немає.</li>
         {% endfor %}
     </ul>
 </div>
-<script>
-    function editMaintenance(index) {
-        const form = document.getElementById(`edit-form-${index}`);
-        form.classList.toggle('hidden');
-    }
-</script>
 {% endif %}
 
 {% if role == 'manager' %}
 <div class="mb-6">
-    <h2 class="text-xl font-bold">Керування атракціонами</h2>
-    <a href="{{ url_for('add_attraction') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Додати новий атракціон</a>
-    <a href="{{ url_for('manage_ticket_prices') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 ml-2">Керувати цінами квитків</a>
+    <h2 class="text-2xl font-bold text-indigo-700 mb-4">Керування атракціонами</h2>
+    <div class="space-x-2">
+        <a href="{{ url_for('add_attraction') }}" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-md hover:shadow-lg">Додати новий атракціон</a>
+        <a href="{{ url_for('manage_ticket_prices') }}" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-md hover:shadow-lg">Керувати цінами квитків</a>
+    </div>
 </div>
 {% endif %}
 
 {% if role == 'cashier' %}
 <div class="mb-6">
-    <h2 class="text-xl font-bold">Продаж квитків</h2>
-    <a href="{{ url_for('ticket_purchase') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Продати квиток</a>
-    <a href="{{ url_for('refund_exchange') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 ml-2">Повернення/Обмін квитків</a>
+    <h2 class="text-2xl font-bold text-indigo-700 mb-4">Продаж квитків</h2>
+    <div class="space-x-2">
+        <a href="{{ url_for('ticket_purchase') }}" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-md hover:shadow-lg">Продати квиток</a>
+        <a href="{{ url_for('refund_exchange') }}" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-md hover:shadow-lg">Повернення/Обмін квитків</a>
+    </div>
 </div>
 {% endif %}
 
-<h2 class="text-xl font-bold mb-4">Атракціони</h2>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<h2 class="text-2xl font-bold text-indigo-700 mb-4">Атракціони</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     {% for attraction in attractions %}
-    <div class="bg-white p-4 rounded shadow">
-        <h3 class="text-lg font-bold">{{ attraction.name }}</h3>
-        <p>Статус: {{ attraction.status }}</p>
-        <p>Місткість: {{ attraction.capacity }}</p>
+    <div class="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300">
+        <h3 class="text-xl font-bold text-blue-600 mb-2">{{ attraction.name }}</h3>
+        <p class="text-gray-600">Статус: <span class="font-semibold {% if attraction.status == 'active' %}text-green-600{% elif attraction.status == 'maintenance' %}text-yellow-600{% else %}text-red-600{% endif %}">{{ attraction.status }}</span></p>
+        <p class="text-gray-600">Місткість: <span class="font-semibold">{{ attraction.capacity }}</span></p>
         {% if role in ['manager'] %}
-        <form method="POST" action="{{ url_for('update_attraction', id=attraction.id) }}" class="mb-2">
-            <input type="hidden" name="role" value="technician">
-            <select name="status" class="p-2 border rounded">
+        <form method="POST" action="{{ url_for('update_attraction', id=attraction.id) }}" class="mt-4" data-attraction-id="{{ attraction.id }}">
+            <input type="hidden" name="role" value="manager">
+            <select name="status" class="p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="active" {% if attraction.status == 'active' %}selected{% endif %}>Активний</option>
                 <option value="maintenance" {% if attraction.status == 'maintenance' %}selected{% endif %}>На обслуговуванні</option>
                 <option value="inactive" {% if attraction.status == 'inactive' %}selected{% endif %}>Неактивний</option>
             </select>
-            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Оновити статус</button>
+            <button type="submit" class="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors duration-200">Оновити статус</button>
         </form>
         {% endif %}
         {% if role == 'manager' %}
         <form action="{{ url_for('delete_attraction', id=attraction.id) }}" method="POST" class="mt-2" onsubmit="return confirm('Ви впевнені, що хочете видалити атракціон {{ attraction.name }}? Ця дія незворотна!');">
-            <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Видалити атракціон</button>
+            <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors duration-200">Видалити атракціон</button>
         </form>
         {% endif %}
         {% if role == 'operator' %}
         <div class="mt-4">
-            <h4 class="text-md font-bold">Додати в чергу</h4>
+            <h4 class="text-md font-bold text-gray-700">Додати в чергу</h4>
             <form action="{{ url_for('add_to_queue') }}" method="POST" class="mb-4">
                 <input type="hidden" name="attraction_id" value="{{ attraction.id }}">
                 <div class="mb-2">
                     <label class="block text-gray-700">QR-код квитка</label>
-                    <input type="text" name="qr_code" class="w-full p-2 border rounded" placeholder="Введіть QR-код" required>
+                    <input type="text" name="qr_code" class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Введіть QR-код" required>
                 </div>
-                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Додати в чергу</button>
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors duration-200">Додати в чергу</button>
             </form>
-            <h4 class="text-md font-bold">Черга ({{ queues[attraction.id] | length }}/{{ attraction.capacity }})</h4>
-            <ul>
+            <h4 class="text-md font-bold text-gray-700">Черга ({{ queues[attraction.id] | length }}/{{ attraction.capacity }})</h4>
+            <ul class="list-disc pl-5 text-gray-600">
                 {% for queue_entry in queues[attraction.id] %}
-                <li class="flex items-center justify-between py-2">
+                <li class="flex justify-between items-center py-1">
                     <span>Позиція {{ queue_entry.position }}: Квиток #{{ queue_entry.ticket_id }} ({{ queue_entry.ticket.type | capitalize }})</span>
-                    <button onclick="processQueue({{ queue_entry.id }})" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">Пропустити</button>
+                    <button onclick="processQueue({{ queue_entry.id }})" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition-colors duration-200">Пропустити</button>
                 </li>
                 {% else %}
-                <li>Черга порожня</li>
+                <li class="text-gray-500">Черга порожня</li>
                 {% endfor %}
             </ul>
         </div>
@@ -127,18 +125,18 @@
 
 {% if role == 'manager' %}
 <div class="mt-6">
-    <h2 class="text-xl font-bold mb-4">Фінансовий звіт</h2>
-    <div class="flex items-center mb-4">
-        <select id="report-period" class="p-2 border rounded mr-2">
+    <h2 class="text-2xl font-bold text-indigo-700 mb-4">Фінансовий звіт</h2>
+    <div class="flex items-center mb-4 space-x-2">
+        <select id="report-period" class="p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="all">За весь час</option>
             <option value="day">Денний</option>
             <option value="week">Тижневий</option>
             <option value="month">Місячний</option>
         </select>
-        <button onclick="fetchReport()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mr-2">Сформувати звіт</button>
-        <button onclick="downloadPDF()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Експортувати в PDF</button>
+        <button onclick="fetchReport()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors duration-200">Сформувати звіт</button>
+        <button onclick="downloadPDF()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors duration-200">Експортувати в PDF</button>
     </div>
-    <div id="report" class="mt-4"></div>
+    <div id="report" class="mt-4 bg-white p-4 rounded-lg shadow"></div>
 </div>
 {% endif %}
 
@@ -168,12 +166,12 @@
             refundTypesHtml += '</ul>';
 
             document.getElementById('report').innerHTML = `
-                <p>Загальний дохід: $${data.total_revenue}</p>
-                <p>Кількість транзакцій: ${data.transaction_count}</p>
-                <p>Кількість повернень: ${data.refund_count}</p>
-                <p>Повернення за типами квитків:</p>
+                <p class="text-gray-800">Загальний дохід: $${data.total_revenue}</p>
+                <p class="text-gray-800">Кількість транзакцій: ${data.transaction_count}</p>
+                <p class="text-gray-800">Кількість повернень: ${data.refund_count}</p>
+                <p class="text-gray-800">Повернення за типами квитків:</p>
                 ${refundTypesHtml}
-                <p>Розподіл за типами квитків:</p>
+                <p class="text-gray-800">Розподіл за типами квитків:</p>
                 ${ticketTypesHtml}
             `;
         }
@@ -186,11 +184,13 @@
     }
 
     // Обробка оновлення атракціонів через AJAX
-    document.querySelectorAll('.update-attraction-form').forEach(form => {
+    document.querySelectorAll('form[data-attraction-id]').forEach(form => {
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
             const formData = new FormData(form);
             const attractionId = form.getAttribute('data-attraction-id');
+            const statusElement = form.closest('.bg-white').querySelector('p:nth-child(2) span'); // Знаходимо елемент статусу
+            const colorElement = form.closest('.bg-white').querySelector('p:nth-child(2) .font-semibold'); // Знаходимо елемент з кольором
 
             try {
                 const response = await fetch(`/attraction/update/${attractionId}`, {
@@ -198,8 +198,18 @@
                     body: formData
                 });
                 const data = await response.json();
+                console.log('Server response:', data); // Для діагностики
 
                 if (data.message) {
+                    // Оновлюємо статус у DOM
+                    const newStatus = form.querySelector('select[name="status"]').value;
+                    statusElement.textContent = newStatus;
+                    // Оновлюємо колір статусу
+                    colorElement.className = 'font-semibold';
+                    if (newStatus === 'active') colorElement.classList.add('text-green-600');
+                    else if (newStatus === 'maintenance') colorElement.classList.add('text-yellow-600');
+                    else if (newStatus === 'inactive') colorElement.classList.add('text-red-600');
+
                     Swal.fire({
                         icon: 'success',
                         title: 'Успіх',
@@ -215,6 +225,7 @@
                     });
                 }
             } catch (error) {
+                console.error('Error:', error);
                 Swal.fire({
                     icon: 'error',
                     title: 'Помилка',

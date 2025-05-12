@@ -256,18 +256,21 @@ def refund_exchange():
 
 @app.route('/attraction/update/<int:id>', methods=['POST'])
 def update_attraction(id):
-    if 'technician' in request.form.get('role', ''):
-        attraction = Attraction.query.get_or_404(id)
-        new_status = request.form.get('status')
-        if new_status in ['active', 'maintenance', 'inactive']:
-            attraction.status = new_status
-            db.session.commit()
-            flash('Статус атракціону оновлено!', 'success')
-        else:
-            flash('Недопустимий статус.', 'error')
-        return redirect(url_for('dashboard'))
-    flash('Доступ заборонено.', 'error')
-    return redirect(url_for('dashboard'))
+    if 'user_id' not in session:
+        return jsonify({'error': 'Не авторизований користувач'}), 401
+
+    user = User.query.get(session['user_id'])
+    if user.role != 'manager':
+        return jsonify({'error': 'Доступ заборонено'}), 403
+
+    attraction = Attraction.query.get_or_404(id)
+    new_status = request.form.get('status')
+    if new_status in ['active', 'maintenance', 'inactive']:
+        attraction.status = new_status
+        db.session.commit()
+        return jsonify({'message': 'Статус атракціону оновлено!'})
+    else:
+        return jsonify({'error': 'Недопустимий статус'}), 400
 
 @app.route('/attraction/add', methods=['GET', 'POST'])
 def add_attraction():

@@ -7,32 +7,73 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            background: linear-gradient(to bottom right, #f3f4f6, #e0e7ff);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        main {
+            flex: 1;
+        }
+        .flash-message {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(-10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
-<nav class="bg-blue-600 p-4 text-white">
-    <div class="container mx-auto flex justify-between">
-        <a href="{{ url_for('index') }}" class="text-xl font-bold">FunPark</a>
-        <div>
-            {% if session.get('user_id') %}
-            <a href="{{ url_for('dashboard') }}" class="mr-4">Dashboard</a>
-            <a href="{{ url_for('logout') }}">Logout</a>
-            {% else %}
-            <a href="{{ url_for('login') }}">Login</a>
-            {% endif %}
+<body class="font-sans text-gray-800">
+<!-- Header -->
+<header class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <h1 class="text-2xl font-bold">FunPark</h1>
         </div>
+        <nav>
+            <ul class="flex space-x-4">
+                {% if session.get('user_id') %}
+                <li><a href="{{ url_for('dashboard') }}" class="hover:underline">Dashboard</a></li>
+                <li><a href="{{ url_for('logout') }}" class="hover:underline">Logout</a></li>
+                {% else %}
+                <li><a href="{{ url_for('login') }}" class="hover:underline">Login</a></li>
+                {% endif %}
+            </ul>
+        </nav>
     </div>
-</nav>
-<div class="container mx-auto p-4">
+</header>
+
+<!-- Flash messages -->
+<div class="container mx-auto px-4 py-4">
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     {% for category, message in messages %}
-    <div class="mb-4 p-4 rounded {% if category == 'success' %}bg-green-100 text-green-700{% elif category == 'error' %}bg-red-100 text-red-700{% elif category == 'maintenance_alert' %}bg-yellow-100 text-yellow-800{% else %}bg-blue-100 text-blue-700{% endif %}">
+    <div class="flash-message p-4 mb-4 rounded shadow {% if category == 'success' %}bg-green-100 text-green-700{% elif category == 'error' %}bg-red-100 text-red-700{% elif category == 'maintenance_alert' %}bg-yellow-100 text-yellow-800{% else %}bg-blue-100 text-blue-700{% endif %}">
         {{ message }}
     </div>
     {% endfor %}
     {% endif %}
     {% endwith %}
-    {% block content %}{% endblock %}
 </div>
+
+<!-- Main content -->
+<main class="container mx-auto px-4 py-8">
+    {% block content %}{% endblock %}
+</main>
+
+<!-- Footer -->
+<footer class="bg-gray-800 text-white py-4 mt-auto">
+    <div class="container mx-auto px-4 text-center">
+        <p>© 2025 FunPark. Усі права захищені.</p>
+        <p>Контакти: <a href="mailto:info@funpark.com" class="underline">info@funpark.com</a> | Телефон: +380 123 456 789</p>
+        <p>Адреса: вул. Весела, 1, Київ, Україна</p>
+    </div>
+</footer>
 </body>
 </html>

@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 {% block title %}Home{% endblock %}
 {% block content %}
-<div class="text-center">
-    <h1 class="text-4xl font-bold mb-4">Welcome to FunPark</h1>
-    <p class="text-lg mb-6">Experience the thrill and manage your amusement park efficiently!</p>
-    <a href="{{ url_for('login') }}" class="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700">Get Started</a>
+<div class="text-center py-20 bg-white rounded-lg shadow-lg">
+    <h1 class="text-4xl font-bold mb-4 text-indigo-700">Welcome to FunPark</h1>
+    <p class="text-lg mb-6 text-gray-600">Experience the thrill and manage your amusement park efficiently!</p>
+    <a href="{{ url_for('login') }}" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-md hover:shadow-lg">Get Started</a>
 </div>
 {% endblock %}
