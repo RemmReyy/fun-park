@@ -12,7 +12,7 @@
     <h2 class="text-2xl font-bold text-indigo-700 mb-4">Записи про обслуговування</h2>
     <ul>
         {% for record in maintenance_records %}
-        <li class="bg-white p-6 rounded-lg shadow-lg mb-4 border-l-4 {% if record.status == 'ongoing' %}border-yellow-500{% else %}border-green-500{% endif %} hover:shadow-xl transition-shadow duration-300">
+        <li class="bg-white p-6 rounded-lg shadow-lg mb-4 border-l-4 {% if record.status == 'ongoing' %}border-yellow-500{% else %}border-green-500{% endif %} hover:shadow-xl transition-shadow duration-300" data-index="{{ loop.index0 }}">
             <div class="flex justify-between items-center">
                 <div>
                     <p class="font-bold text-gray-800">Атракціон: {{ record.attraction_name }}</p>
@@ -22,7 +22,7 @@
                     <p class="text-gray-600">Технік: {{ record.technician_name }}</p>
                 </div>
                 <div class="space-x-3">
-                    <button onclick="editMaintenance({{ loop.index0 }})" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-200">Редагувати</button>
+                    <button onclick="editMaintenance(this, {{ loop.index0 }})" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-200">Редагувати</button>
                     <form action="{{ url_for('delete_maintenance', id=record.id) }}" method="POST" onsubmit="return confirm('Ви впевнені, що хочете видалити цей запис? Ця дія незворотна!');" style="display:inline;">
                         <input type="hidden" name="role" value="technician">
                         <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors duration-200">Видалити</button>
@@ -50,6 +50,17 @@
         {% endfor %}
     </ul>
 </div>
+<script>
+    function editMaintenance(button, index) {
+        const form = button.closest('li').querySelector(`#edit-form-${index}`);
+        if (form) {
+            console.log(`Toggling form with id: edit-form-${index}`); // Для діагностики
+            form.classList.toggle('hidden');
+        } else {
+            console.error(`Form with id edit-form-${index} not found`);
+        }
+    }
+</script>
 {% endif %}
 
 {% if role == 'manager' %}
