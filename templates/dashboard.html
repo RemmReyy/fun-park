@@ -6,60 +6,158 @@
 {% if role == 'technician' %}
 <div class="mb-6">
     <h2 class="text-2xl font-bold text-indigo-700 mb-4">Технічне обслуговування</h2>
-    <a href="{{ url_for('add_maintenance') }}" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-md hover:shadow-lg">Додати запис про обслуговування</a>
+    <div class="space-x-2">
+        <a href="{{ url_for('add_maintenance') }}" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-md hover:shadow-lg">Додати запис про обслуговування</a>
+        <button id="view-maintenance-records" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-md hover:shadow-lg">Переглянути записи про обслуговування</button>
+    </div>
 </div>
-<div class="mt-6">
-    <h2 class="text-2xl font-bold text-indigo-700 mb-4">Записи про обслуговування</h2>
-    <ul>
-        {% for record in maintenance_records %}
-        <li class="bg-white p-6 rounded-lg shadow-lg mb-4 border-l-4 {% if record.status == 'ongoing' %}border-yellow-500{% else %}border-green-500{% endif %} hover:shadow-xl transition-shadow duration-300" data-index="{{ loop.index0 }}">
-            <div class="flex justify-between items-center">
-                <div>
-                    <p class="font-bold text-gray-800">Атракціон: {{ record.attraction_name }}</p>
-                    <p class="text-gray-600">Опис: {{ record.description or 'Без опису' }}</p>
-                    <p class="text-gray-600">Статус: <span class="font-semibold">{{ record.status | capitalize }}</span></p>
-                    <p class="text-gray-600">Дата: {{ record.date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
-                    <p class="text-gray-600">Технік: {{ record.technician_name }}</p>
-                </div>
-                <div class="space-x-3">
-                    <button onclick="editMaintenance(this, {{ loop.index0 }})" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-200">Редагувати</button>
-                    <form action="{{ url_for('delete_maintenance', id=record.id) }}" method="POST" onsubmit="return confirm('Ви впевнені, що хочете видалити цей запис? Ця дія незворотна!');" style="display:inline;">
-                        <input type="hidden" name="role" value="technician">
-                        <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors duration-200">Видалити</button>
-                    </form>
-                </div>
-            </div>
-            <form id="edit-form-{{ loop.index0 }}" class="hidden mt-4" method="POST" action="{{ url_for('edit_maintenance', id=record.id) }}">
+
+<!-- Модальне вікно для записів про обслуговування -->
+<div id="maintenance-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <h2 class="text-2xl font-bold text-indigo-700 mb-4">Записи про обслуговування</h2>
+        <!-- Селектор сортування -->
+        <div class="mb-4">
+            <label for="sort-by" class="mr-2 text-gray-700 font-medium">Сортувати за:</label>
+            <select id="sort-by" class="p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="date-desc">Дата (за спаданням)</option>
+                <option value="date-asc">Дата (за зростанням)</option>
+                <option value="status">Статус</option>
+                <option value="attraction">Атракціон</option>
+            </select>
+        </div>
+        <!-- Таблиця записів -->
+        <table id="maintenance-table" class="w-full text-left border-collapse">
+            <thead>
+            <tr class="bg-gray-200">
+                <th class="p-2 border">Атракціон</th>
+                <th class="p-2 border">Опис</th>
+                <th class="p-2 border">Статус</th>
+                <th class="p-2 border">Дата</th>
+                <th class="p-2 border">Технік</th>
+                <th class="p-2 border">Дії</th>
+            </tr>
+            </thead>
+            <tbody id="maintenance-records-body">
+            {% for record in maintenance_records %}
+            <tr class="border-t hover:bg-gray-100" data-id="{{ record.id }}">
+                <td class="p-2 border">{{ record.attraction_name }}</td>
+                <td class="p-2 border">{{ record.description or 'Без опису' }}</td>
+                <td class="p-2 border"><span class="font-semibold {% if record.status == 'ongoing' %}text-yellow-600{% else %}text-green-600{% endif %}">{{ record.status | capitalize }}</span></td>
+                <td class="p-2 border">{{ record.date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td class="p-2 border">{{ record.technician_name }}</td>
+                <td class="p-2 border">
+                    <div class="flex flex-col items-center space-y-2">
+                        <button onclick="editMaintenance(this, {{ loop.index0 }})" class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition-colors duration-200">Редагувати</button>
+                        <form action="{{ url_for('delete_maintenance', id=record.id) }}" method="POST" onsubmit="return confirm('Ви впевнені, що хочете видалити цей запис? Ця дія незворотна!');" style="display:inline;">
+                            <input type="hidden" name="role" value="technician">
+                            <button type="submit" class="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition-colors duration-200">Видалити</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not maintenance_records %}
+            <tr><td colspan="6" class="p-2 border text-gray-500 text-center">Записів немає.</td></tr>
+            {% endif %}
+            </tbody>
+        </table>
+        <!-- Форма редагування -->
+        <div id="edit-form-container" class="mt-4 hidden">
+            <form id="edit-form" method="POST" action="">
                 <input type="hidden" name="role" value="technician">
                 <div class="mb-4">
                     <label class="block text-gray-700 font-medium">Опис</label>
-                    <textarea name="description" class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">{{ record.description or '' }}</textarea>
+                    <textarea name="description" class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
                 </div>
                 <div class="mb-4">
                     <label class="block text-gray-700 font-medium">Статус</label>
                     <select name="status" class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="ongoing" {% if record.status == 'ongoing' %}selected{% endif %}>Триває</option>
-                        <option value="completed" {% if record.status == 'completed' %}selected{% endif %}>Завершено</option>
+                        <option value="ongoing">Триває</option>
+                        <option value="completed">Завершено</option>
                     </select>
                 </div>
-                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors duration-200">Зберегти</button>
+                <div class="flex justify-end space-x-2">
+                    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors duration-200">Зберегти</button>
+                    <button type="button" id="cancel-edit" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors duration-200">Скасувати</button>
+                </div>
             </form>
-        </li>
-        {% else %}
-        <li class="bg-gray-100 p-4 rounded-lg shadow text-gray-500">Записів немає.</li>
-        {% endfor %}
-    </ul>
+        </div>
+        <button id="close-modal" class="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors duration-200">Закрити</button>
+    </div>
 </div>
+
 <script>
-    function editMaintenance(button, index) {
-        const form = button.closest('li').querySelector(`#edit-form-${index}`);
-        if (form) {
-            console.log(`Toggling form with id: edit-form-${index}`); // Для діагностики
-            form.classList.toggle('hidden');
-        } else {
-            console.error(`Form with id edit-form-${index} not found`);
+    // Відкриття модального вікна
+    document.getElementById('view-maintenance-records').addEventListener('click', () => {
+        document.getElementById('maintenance-modal').classList.remove('hidden');
+    });
+
+    // Закриття модального вікна
+    document.getElementById('close-modal').addEventListener('click', () => {
+        document.getElementById('maintenance-modal').classList.add('hidden');
+        document.getElementById('edit-form-container').classList.add('hidden');
+    });
+
+    // Закриття модального вікна при натисканні поза його межами
+    window.addEventListener('click', (event) => {
+        const modal = document.getElementById('maintenance-modal');
+        if (event.target === modal) {
+            modal.classList.add('hidden');
+            document.getElementById('edit-form-container').classList.add('hidden');
         }
+    });
+
+    // Сортування записів
+    document.getElementById('sort-by').addEventListener('change', (event) => {
+        const sortBy = event.target.value;
+        let records = Array.from(document.querySelectorAll('#maintenance-table tbody tr'));
+        records.sort((a, b) => {
+            let aValue, bValue;
+            switch (sortBy) {
+                case 'date-desc':
+                    aValue = new Date(a.querySelector('td:nth-child(4)').textContent);
+                    bValue = new Date(b.querySelector('td:nth-child(4)').textContent);
+                    return bValue - aValue;
+                case 'date-asc':
+                    aValue = new Date(a.querySelector('td:nth-child(4)').textContent);
+                    bValue = new Date(b.querySelector('td:nth-child(4)').textContent);
+                    return aValue - bValue;
+                case 'status':
+                    aValue = a.querySelector('td:nth-child(3) span').textContent.toLowerCase();
+                    bValue = b.querySelector('td:nth-child(3) span').textContent.toLowerCase();
+                    return aValue.localeCompare(bValue);
+                case 'attraction':
+                    aValue = a.querySelector('td:nth-child(1)').textContent.toLowerCase();
+                    bValue = b.querySelector('td:nth-child(1)').textContent.toLowerCase();
+                    return aValue.localeCompare(bValue);
+            }
+        });
+        const tbody = document.getElementById('maintenance-records-body');
+        records.forEach(record => tbody.appendChild(record));
+    });
+
+    // Редагування запису
+    function editMaintenance(button, index) {
+        const row = button.closest('tr');
+        const recordId = row.getAttribute('data-id');
+        const description = row.querySelector('td:nth-child(2)').textContent;
+        const status = row.querySelector('td:nth-child(3) span').textContent.toLowerCase();
+
+        const form = document.getElementById('edit-form');
+        const container = document.getElementById('edit-form-container');
+        // Формуємо URL динамічно в JavaScript
+        form.action = `/maintenance/edit/${recordId}`;
+        form.querySelector('textarea[name="description"]').value = description === 'Без опису' ? '' : description;
+        form.querySelector('select[name="status"]').value = status;
+
+        container.classList.remove('hidden');
     }
+
+    // Скасування редагування
+    document.getElementById('cancel-edit').addEventListener('click', () => {
+        document.getElementById('edit-form-container').classList.add('hidden');
+    });
 </script>
 {% endif %}
 
