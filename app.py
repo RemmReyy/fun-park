@@ -10,6 +10,7 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet
 from io import BytesIO
+import json
 
 # Завантажуємо змінні оточення з .env
 load_dotenv()
@@ -23,6 +24,25 @@ db.init_app(app)
 # Create database
 with app.app_context():
     db.create_all()
+
+# Функція для зчитування сповіщень
+def read_notifications():
+    if not os.path.exists('notifications.json'):
+        return []
+    with open('notifications.json', 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+# Функція для запису сповіщень
+def write_notifications(notifications):
+    with open('notifications.json', 'w', encoding='utf-8') as f:
+        json.dump(notifications, f, ensure_ascii=False, indent=4)
+
+# Функція для генерації нового ID сповіщення
+def get_next_notification_id():
+    notifications = read_notifications()
+    if not notifications:
+        return 1
+    return max(notif['id'] for notif in notifications) + 1
 
 # Routes
 @app.route('/')
@@ -58,8 +78,11 @@ def dashboard():
 
     user = User.query.get(session['user_id'])
     role = user.role
+    notifications = []
     if role == 'manager':
         attractions = Attraction.query.all()
+        all_notifications = read_notifications()
+        notifications = [notif for notif in all_notifications if not notif['is_read']]
     elif role == 'technician':
         attractions = Attraction.query.filter_by(status='maintenance').all()
     elif role == 'cashier':
@@ -83,7 +106,7 @@ def dashboard():
         for record in maintenance_records
     ]
 
-    return render_template('dashboard.html', role=role, attractions=attractions, queues=queues, maintenance_records=maintenance_data)
+    return render_template('dashboard.html', role=role, attractions=attractions, queues=queues, maintenance_records=maintenance_data, notifications=notifications)
 
 @app.route('/ticket/purchase', methods=['GET', 'POST'])
 def ticket_purchase():
@@ -624,8 +647,24 @@ def add_maintenance():
 def edit_maintenance(id):
     if 'technician' in request.form.get('role', ''):
         record = MaintenanceRecord.query.get_or_404(id)
+        old_status = record.status  # Зберігаємо старий статус для порівняння
         record.description = request.form.get('description')
         record.status = request.form.get('status')
+
+        # Перевіряємо, чи статус змінився на 'completed'
+        if old_status != 'completed' and record.status == 'completed':
+            attraction_name = Attraction.query.get(record.attraction_id).name
+            notifications = read_notifications()
+            new_notification = {
+                'id': get_next_notification_id(),
+                'message': f"Атракціон {attraction_name} готовий до використання після обслуговування.",
+                'created_at': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
+                'is_read': False
+            }
+            notifications.append(new_notification)
+            write_notifications(notifications)
+            flash('Сповіщення створено для менеджерів!', 'success')
+
         db.session.commit()
         flash('Запис про обслуговування оновлено!', 'success')
     else:
@@ -641,4 +680,20 @@ def delete_maintenance(id):
         flash('Запис про обслуговування видалено!', 'success')
     else:
         flash('Доступ заборонено.', 'error')
+    return redirect(url_for('dashboard'))
+
+@app.route('/notification/mark-read/<int:id>', methods=['POST'])
+def mark_notification_read(id):
+    if 'user_id' not in session or session.get('role') != 'manager':
+        flash('Доступ заборонено.', 'error')
+        return redirect(url_for('dashboard'))
+
+    notifications = read_notifications()
+    for notif in notifications:
+        if notif['id'] == id:
+            notif['is_read'] = True
+            break
+
+    write_notifications(notifications)
+    flash('Сповіщення позначено як прочитане.', 'success')
     return redirect(url_for('dashboard'))
