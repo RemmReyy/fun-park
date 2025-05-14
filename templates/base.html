@@ -75,5 +75,19 @@
         <p>Адреса: вул. Весела, 1, Київ, Україна</p>
     </div>
 </footer>
+
+<!-- JavaScript для автоматичного приховування флеш-повідомлень -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const flashMessages = document.querySelectorAll('.flash-message');
+        flashMessages.forEach(message => {
+            setTimeout(() => {
+                message.style.opacity = '0'; // Плавне зникнення
+                setTimeout(() => message.remove(), 500); // Видаляємо елемент після анімації
+            }, 4000); // Повідомлення зникає через 2 секунди
+        });
+    });
+</script>
+
 </body>
 </html>
