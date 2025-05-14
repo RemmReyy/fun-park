@@ -8,6 +8,7 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
     role = db.Column(db.String(20), nullable=False)  # manager, cashier, technician, operator
+    notifications = db.relationship('Notification', backref='assigned_user', lazy='dynamic', overlaps="assigned_user,notifications")
 
 class Attraction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -60,3 +61,11 @@ class Queue(db.Model):
 
     ticket = db.relationship('Ticket', backref='queues', lazy='select')
     attraction = db.relationship('Attraction', backref='queues', lazy='select')
+
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    is_read = db.Column(db.Boolean, nullable=False, default=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    user = db.relationship('User', backref=db.backref('assigned_user', overlaps="assigned_user"), lazy='select', overlaps="assigned_user,notifications")

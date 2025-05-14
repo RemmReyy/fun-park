@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_file
-from models import db, User, Ticket, Attraction, MaintenanceRecord, Transaction, TicketPrice, Queue
+from models import db, User, Ticket, Attraction, MaintenanceRecord, Transaction, TicketPrice, Queue, Notification
 from datetime import datetime, timedelta
 import qrcode
 import os
@@ -24,25 +24,6 @@ db.init_app(app)
 # Create database
 with app.app_context():
     db.create_all()
-
-# Функція для зчитування сповіщень
-def read_notifications():
-    if not os.path.exists('notifications.json'):
-        return []
-    with open('notifications.json', 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-# Функція для запису сповіщень
-def write_notifications(notifications):
-    with open('notifications.json', 'w', encoding='utf-8') as f:
-        json.dump(notifications, f, ensure_ascii=False, indent=4)
-
-# Функція для генерації нового ID сповіщення
-def get_next_notification_id():
-    notifications = read_notifications()
-    if not notifications:
-        return 1
-    return max(notif['id'] for notif in notifications) + 1
 
 # Routes
 @app.route('/')
@@ -81,8 +62,7 @@ def dashboard():
     notifications = []
     if role == 'manager':
         attractions = Attraction.query.all()
-        all_notifications = read_notifications()
-        notifications = [notif for notif in all_notifications if not notif['is_read']]
+        notifications = Notification.query.filter_by(user_id=user.id, is_read=False).all()
     elif role == 'technician':
         attractions = Attraction.query.filter_by(status='maintenance').all()
     elif role == 'cashier':
@@ -654,15 +634,13 @@ def edit_maintenance(id):
         # Перевіряємо, чи статус змінився на 'completed'
         if old_status != 'completed' and record.status == 'completed':
             attraction_name = Attraction.query.get(record.attraction_id).name
-            notifications = read_notifications()
-            new_notification = {
-                'id': get_next_notification_id(),
-                'message': f"Атракціон {attraction_name} готовий до використання після обслуговування.",
-                'created_at': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
-                'is_read': False
-            }
-            notifications.append(new_notification)
-            write_notifications(notifications)
+            managers = User.query.filter_by(role='manager').all()
+            for manager in managers:
+                notification = Notification(
+                    message=f"Атракціон {attraction_name} готовий до використання після обслуговування.",
+                    user_id=manager.id
+                )
+                db.session.add(notification)
             flash('Сповіщення створено для менеджерів!', 'success')
 
         db.session.commit()
@@ -688,12 +666,11 @@ def mark_notification_read(id):
         flash('Доступ заборонено.', 'error')
         return redirect(url_for('dashboard'))
 
-    notifications = read_notifications()
-    for notif in notifications:
-        if notif['id'] == id:
-            notif['is_read'] = True
-            break
-
-    write_notifications(notifications)
-    flash('Сповіщення позначено як прочитане.', 'success')
+    notification = Notification.query.get_or_404(id)
+    if notification.user_id == session['user_id']:
+        notification.is_read = True
+        db.session.commit()
+        flash('Сповіщення позначено як прочитане.', 'success')
+    else:
+        flash('Доступ заборонено.', 'error')
     return redirect(url_for('dashboard'))

@@ -74,7 +74,7 @@
             <div class="flex justify-between items-center">
                 <div>
                     <p class="text-gray-800">Повідомлення: {{ notification.message }}</p>
-                    <p class="text-gray-500 text-sm">Отримано: {{ notification.created_at }}</p>
+                    <p class="text-gray-500 text-sm">Отримано: {{ notification.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
                     <p class="text-gray-500 text-sm">ID сповіщення: {{ notification.id }}</p>
                 </div>
                 <form action="{{ url_for('mark_notification_read', id=notification.id) }}" method="POST" style="display:inline;">

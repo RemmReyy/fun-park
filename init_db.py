@@ -1,6 +1,7 @@
 from app import app, db
-from models import User, TicketPrice
+from models import User, TicketPrice, Notification
 from werkzeug.security import generate_password_hash
+import os
 
 # Create the database and populate it with initial data
 with app.app_context():
@@ -12,7 +13,7 @@ with app.app_context():
     manager = User(username='manager', password=generate_password_hash('password'), role='manager')
     cashier = User(username='cashier', password=generate_password_hash('password'), role='cashier')
     technician = User(username='technician', password=generate_password_hash('password'), role='technician')
-    operator = User(username='operator', password=generate_password_hash('password'), role='operator')  # New operator role
+    operator = User(username='operator', password=generate_password_hash('password'), role='operator')
     db.session.add_all([manager, cashier, technician, operator])
 
     # Create initial ticket prices
