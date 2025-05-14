@@ -163,30 +163,6 @@
 
 {% if role == 'manager' %}
 <div class="mb-6">
-    <h2 class="text-2xl font-bold text-indigo-700 mb-4">Сповіщення</h2>
-    {% if notifications %}
-    <p class="mb-2">Кількість сповіщень: {{ notifications | length }}</p>
-    <ul>
-        {% for notification in notifications %}
-        <li class="bg-white p-4 rounded-lg shadow-lg mb-4 border-l-4 border-blue-500 hover:shadow-xl transition-shadow duration-300">
-            <div class="flex justify-between items-center">
-                <div>
-                    <p class="text-gray-800">Повідомлення: {{ notification.message }}</p>
-                    <p class="text-gray-500 text-sm">Отримано: {{ notification.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
-                    <p class="text-gray-500 text-sm">ID сповіщення: {{ notification.id }}</p>
-                </div>
-                <form action="{{ url_for('mark_notification_read', id=notification.id) }}" method="POST" style="display:inline;">
-                    <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition-colors duration-200">Позначити як прочитане</button>
-                </form>
-            </div>
-        </li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <p class="bg-gray-100 p-4 rounded-lg shadow text-gray-500">Нових сповіщень немає.</p>
-    {% endif %}
-</div>
-<div class="mb-6">
     <h2 class="text-2xl font-bold text-indigo-700 mb-4">Керування атракціонами</h2>
     <div class="space-x-2">
         <a href="{{ url_for('add_attraction') }}" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-md hover:shadow-lg">Додати новий атракціон</a>

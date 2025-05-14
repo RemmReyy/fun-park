@@ -660,17 +660,37 @@ def delete_maintenance(id):
         flash('Доступ заборонено.', 'error')
     return redirect(url_for('dashboard'))
 
+@app.route('/api/notifications', methods=['GET'])
+def get_notifications():
+    if 'manager' not in session.get('role', ''):
+        return jsonify({'success': False, 'error': 'Доступ заборонено'}), 403
+
+    user_id = session['user_id']
+    notifications = Notification.query.filter_by(user_id=user_id).all()
+    notification_list = [{
+        'id': n.id,
+        'message': n.message,
+        'created_at': n.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+        'is_read': n.is_read
+    } for n in notifications]
+    return jsonify({'success': True, 'notifications': notification_list})
+
 @app.route('/notification/mark-read/<int:id>', methods=['POST'])
 def mark_notification_read(id):
-    if 'user_id' not in session or session.get('role') != 'manager':
-        flash('Доступ заборонено.', 'error')
-        return redirect(url_for('dashboard'))
+    if 'manager' not in session.get('role', ''):
+        return jsonify({'success': False, 'error': 'Доступ заборонено'}), 403
 
     notification = Notification.query.get_or_404(id)
-    if notification.user_id == session['user_id']:
-        notification.is_read = True
-        db.session.commit()
-        flash('Сповіщення позначено як прочитане.', 'success')
-    else:
-        flash('Доступ заборонено.', 'error')
-    return redirect(url_for('dashboard'))
+    notification.is_read = True
+    db.session.commit()
+    return jsonify({'success': True})
+
+@app.route('/notification/delete/<int:id>', methods=['POST'])
+def delete_notification(id):
+    if 'manager' not in session.get('role', ''):
+        return jsonify({'success': False, 'error': 'Доступ заборонено'}), 403
+
+    notification = Notification.query.get_or_404(id)
+    db.session.delete(notification)
+    db.session.commit()
+    return jsonify({'success': True})
