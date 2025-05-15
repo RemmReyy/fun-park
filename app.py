@@ -625,29 +625,39 @@ def add_maintenance():
 
 @app.route('/maintenance/edit/<int:id>', methods=['POST'])
 def edit_maintenance(id):
-    if 'technician' in request.form.get('role', ''):
-        record = MaintenanceRecord.query.get_or_404(id)
-        old_status = record.status  # Зберігаємо старий статус для порівняння
-        record.description = request.form.get('description')
-        record.status = request.form.get('status')
+    if 'technician' not in session.get('role', ''):
+        return jsonify({'success': False, 'error': 'Доступ заборонено'}), 403
 
-        # Перевіряємо, чи статус змінився на 'completed'
-        if old_status != 'completed' and record.status == 'completed':
-            attraction_name = Attraction.query.get(record.attraction_id).name
-            managers = User.query.filter_by(role='manager').all()
-            for manager in managers:
-                notification = Notification(
-                    message=f"Атракціон {attraction_name} готовий до використання після обслуговування.",
-                    user_id=manager.id
-                )
-                db.session.add(notification)
-            flash('Сповіщення створено для менеджерів!', 'success')
+    record = MaintenanceRecord.query.get_or_404(id)
+    old_status = record.status  # Зберігаємо старий статус для порівняння
+    record.description = request.form.get('description')
+    record.status = request.form.get('status')
 
-        db.session.commit()
-        flash('Запис про обслуговування оновлено!', 'success')
+    # Перевіряємо, чи статус змінився на 'completed'
+    if old_status != 'completed' and record.status == 'completed':
+        attraction_name = Attraction.query.get(record.attraction_id).name
+        managers = User.query.filter_by(role='manager').all()
+        for manager in managers:
+            notification = Notification(
+                message=f"Атракціон {attraction_name} готовий до використання після обслуговування.",
+                user_id=manager.id
+            )
+            db.session.add(notification)
+        # Замість flash повертаємо сповіщення в JSON
+        notifications_created = True
     else:
-        flash('Доступ заборонено.', 'error')
-    return redirect(url_for('dashboard'))
+        notifications_created = False
+
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'record': {
+            'id': record.id,
+            'description': record.description,
+            'status': record.status
+        },
+        'notifications_created': notifications_created
+    })
 
 @app.route('/maintenance/delete/<int:id>', methods=['POST'])
 def delete_maintenance(id):

@@ -64,7 +64,7 @@
         </table>
         <!-- Форма редагування -->
         <div id="edit-form-container" class="mt-4 hidden">
-            <form id="edit-form" method="POST" action="">
+            <form id="edit-form" method="POST" action="" onsubmit="return saveMaintenance(event)">
                 <input type="hidden" name="role" value="technician">
                 <div class="mb-4">
                     <label class="block text-gray-700 font-medium">Опис</label>
@@ -126,7 +126,10 @@
                 case 'status':
                     aValue = a.querySelector('td:nth-child(3) span').textContent.toLowerCase();
                     bValue = b.querySelector('td:nth-child(3) span').textContent.toLowerCase();
-                    return aValue.localeCompare(bValue);
+                    // Сортування: "ongoing" (Триває) йде першим, "completed" (Завершено) — другим
+                    if (aValue === 'ongoing' && bValue === 'completed') return -1;
+                    if (aValue === 'completed' && bValue === 'ongoing') return 1;
+                    return 0; // Якщо статуси однакові, порядок не змінюється
                 case 'attraction':
                     aValue = a.querySelector('td:nth-child(1)').textContent.toLowerCase();
                     bValue = b.querySelector('td:nth-child(1)').textContent.toLowerCase();
@@ -146,12 +149,54 @@
 
         const form = document.getElementById('edit-form');
         const container = document.getElementById('edit-form-container');
-        // Формуємо URL динамічно в JavaScript
         form.action = `/maintenance/edit/${recordId}`;
         form.querySelector('textarea[name="description"]').value = description === 'Без опису' ? '' : description;
         form.querySelector('select[name="status"]').value = status;
 
         container.classList.remove('hidden');
+    }
+
+    // Збереження змін через AJAX
+    function saveMaintenance(event) {
+        event.preventDefault();
+        const form = document.getElementById('edit-form');
+        const formData = new FormData(form);
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Оновлюємо таблицю
+                const tbody = document.getElementById('maintenance-records-body');
+                const row = tbody.querySelector(`tr[data-id="${data.record.id}"]`);
+                row.querySelector('td:nth-child(2)').textContent = data.record.description || 'Без опису';
+                row.querySelector('td:nth-child(3) span').textContent = data.record.status.charAt(0).toUpperCase() + data.record.status.slice(1);
+                row.querySelector('td:nth-child(3) span').className = `font-semibold ${data.record.status === 'ongoing' ? 'text-yellow-600' : 'text-green-600'}`;
+
+                // Оновлюємо панель сповіщень, якщо вона відкрита
+                const notificationPanel = document.getElementById('notifications-panel');
+                if (notificationPanel && notificationPanel.style.display === 'block' && data.notifications_created) {
+                    updateNotificationsPanel();
+                }
+
+                // Приховуємо форму редагування
+                document.getElementById('edit-form-container').classList.add('hidden');
+            } else {
+                console.error('Error:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Fetch error:', error);
+        });
+        return false; // Запобігаємо стандартній відправці форми
     }
 
     // Скасування редагування
